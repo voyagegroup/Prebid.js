@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { spec, storage } from '../../../modules/insticatorBidAdapter.js';
 import { newBidder } from 'src/adapters/bidderFactory.js'
+import { userSync } from '../../../src/userSync.js';
 
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_DUMMY_VALUE = '74f78609-a92d-4cf1-869f-1b244bbfb5d2';
@@ -11,7 +12,7 @@ let utils = require('src/utils.js');
 describe('InsticatorBidAdapter', function () {
   const adapter = newBidder(spec);
 
-  const bidderRequestId = '22edbae2733bf6';
+  const bidderRequestId = '22edbae2733bf6'
   let bidRequest = {
     bidder: 'insticator',
     adUnitCode: 'adunit-code',
@@ -25,11 +26,6 @@ describe('InsticatorBidAdapter', function () {
       }
     },
     bidId: '30b31c1838de1e',
-    ortb2Imp: {
-      ext: {
-        gpid: '1111/homepage'
-      }
-    },
     schain: {
       ver: '1.0',
       complete: 1,
@@ -229,7 +225,6 @@ describe('InsticatorBidAdapter', function () {
           ]
         },
         ext: {
-          gpid: bidRequest.ortb2Imp.ext.gpid,
           insticator: {
             adUnitId: bidRequest.params.adUnitId,
           },
@@ -383,12 +378,14 @@ describe('InsticatorBidAdapter', function () {
         width: 300,
         height: 200,
         mediaType: 'banner',
+        meta: {
+          advertiserDomains: [
+            'test1.com'
+          ],
+          test: 1
+        },
         ad: 'adm1',
         adUnitCode: 'adunit-code-1',
-        meta: {
-          advertiserDomains: ['test1.com'],
-          test: 1
-        }
       },
       {
         requestId: 'bid2',
