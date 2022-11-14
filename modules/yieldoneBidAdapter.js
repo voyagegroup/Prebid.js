@@ -25,7 +25,8 @@ export const spec = {
       const params = bidRequest.params;
       const placementId = params.placementId;
       const cb = Math.floor(Math.random() * 99999999999);
-      const referrer = bidderRequest.refererInfo.referer;
+      // TODO: is 'page' the right value here?
+      const referrer = bidderRequest.refererInfo.page;
       const bidId = bidRequest.bidId;
       const transactionId = bidRequest.transactionId;
       const unitCode = bidRequest.adUnitCode;
@@ -60,6 +61,12 @@ export const spec = {
       const idlEnv = deepAccess(bidRequest, 'userId.idl_env');
       if (isStr(idlEnv) && !isEmpty(idlEnv)) {
         payload.lr_env = idlEnv;
+      }
+
+      // IMID
+      const imuid = deepAccess(bidRequest, 'userId.imuid');
+      if (isStr(imuid) && !isEmpty(imuid)) {
+        payload.imuid = imuid;
       }
 
       return {

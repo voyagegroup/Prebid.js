@@ -13,7 +13,7 @@ import { getStorageManager } from '../src/storageManager.js';
 
 const gvlid = 91;
 const bidderCode = 'criteo';
-export const storage = getStorageManager(gvlid, bidderCode);
+export const storage = getStorageManager({gvlid: gvlid, moduleName: bidderCode});
 
 const bididStorageKey = 'cto_bidid';
 const bundleStorageKey = 'cto_bundle';
@@ -90,7 +90,8 @@ function buildCriteoUsersyncUrl(topUrl, domain, bundle, areCookiesWriteable, isL
 function callCriteoUserSync(parsedCriteoData, gdprString, callback) {
   const cw = storage.cookiesAreEnabled();
   const lsw = storage.localStorageIsEnabled();
-  const topUrl = extractProtocolHost(getRefererInfo().referer);
+  const topUrl = extractProtocolHost(getRefererInfo().page);
+  // TODO: should domain really be extracted from the current frame?
   const domain = extractProtocolHost(document.location.href, true);
   const isPublishertagPresent = typeof criteo_pubtag !== 'undefined'; // eslint-disable-line camelcase
 
