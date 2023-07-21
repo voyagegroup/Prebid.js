@@ -3,9 +3,6 @@ import {
   logError, logWarn, logMessage, deepAccess
 } from './utils.js';
 import {find} from './polyfill.js';
-import {getGlobal} from './prebidGlobal.js';
-
-const pbjsInstance = getGlobal();
 const moduleCode = 'outstream';
 
 /**
@@ -17,12 +14,11 @@ const moduleCode = 'outstream';
  */
 
 export function Renderer(options) {
-  const { url, config, id, callback, loaded, adUnitCode, renderNow } = options;
+  const { url, config, id, callback, loaded, adUnitCode } = options;
   this.url = url;
   this.config = config;
   this.handlers = {};
   this.id = id;
-  this.renderNow = renderNow;
 
   // a renderer may push to the command queue to delay rendering until the
   // render function is loaded by loadExternalScript, at which point the the command
@@ -54,21 +50,19 @@ export function Renderer(options) {
       }
     }
 
-    if (isRendererPreferredFromAdUnit(adUnitCode)) {
-      logWarn(`External Js not loaded by Renderer since renderer url and callback is already defined on adUnit ${adUnitCode}`);
-      runRender();
-    } else if (renderNow) {
-      runRender();
-    } else {
+    if (!isRendererPreferredFromAdUnit(adUnitCode)) {
       // we expect to load a renderer url once only so cache the request to load script
       this.cmd.unshift(runRender) // should render run first ?
       loadExternalScript(url, moduleCode, this.callback, this.documentContext);
+    } else {
+      logWarn(`External Js not loaded by Renderer since renderer url and callback is already defined on adUnit ${adUnitCode}`);
+      runRender()
     }
-  }.bind(this); // bind the function to this object to avoid 'this' errors
+  }.bind(this) // bind the function to this object to avoid 'this' errors
 }
 
-Renderer.install = function({ url, config, id, callback, loaded, adUnitCode, renderNow }) {
-  return new Renderer({ url, config, id, callback, loaded, adUnitCode, renderNow });
+Renderer.install = function({ url, config, id, callback, loaded, adUnitCode }) {
+  return new Renderer({ url, config, id, callback, loaded, adUnitCode });
 };
 
 Renderer.prototype.getConfig = function() {
@@ -111,7 +105,7 @@ Renderer.prototype.process = function() {
  * @returns {Boolean}
  */
 export function isRendererRequired(renderer) {
-  return !!(renderer && (renderer.url || renderer.renderNow));
+  return !!(renderer && renderer.url);
 }
 
 /**
@@ -133,7 +127,7 @@ export function executeRenderer(renderer, bid, doc) {
 }
 
 function isRendererPreferredFromAdUnit(adUnitCode) {
-  const adUnits = pbjsInstance.adUnits;
+  const adUnits = $$PREBID_GLOBAL$$.adUnits;
   const adUnit = find(adUnits, adUnit => {
     return adUnit.code === adUnitCode;
   });

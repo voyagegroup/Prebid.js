@@ -47,8 +47,7 @@ export const spec = {
       if (!propertyId) { propertyId = bidRequest.params.propertyId; }
       if (!pageViewGuid && bidRequest.params) { pageViewGuid = bidRequest.params.pageViewGuid || ''; }
       if (!bidderRequestId) { bidderRequestId = bidRequest.bidderRequestId; }
-      // TODO: is 'page' the right value here?
-      if (!url && bidderRequest) { url = bidderRequest.refererInfo.page; }
+      if (!url && bidderRequest) { url = bidderRequest.refererInfo.referer; }
       if (!contents.length && bidRequest.params.contents && bidRequest.params.contents.length) { contents = bidRequest.params.contents; }
       if (Object.keys(data).length === 0 && bidRequest.params.data && Object.keys(bidRequest.params.data).length !== 0) { data = bidRequest.params.data; }
       if (bidderRequest && bidRequest.gdprConsent) { gdrpApplies = bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies ? bidderRequest.gdprConsent.gdprApplies : true; }
@@ -81,7 +80,7 @@ export const spec = {
       data: data,
       gdpr_applies: gdrpApplies,
       gdpr_consent: gdprConsent,
-    };
+    }
 
     return [{
       method: 'POST',
@@ -120,7 +119,7 @@ export const spec = {
     }
     return bidResponses;
   }
-};
+}
 
 /**
 * Generate size param for bid request using sizes array

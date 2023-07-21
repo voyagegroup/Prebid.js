@@ -1,11 +1,12 @@
-import {deepAccess, getDNT, isArray, logWarn} from '../src/utils.js';
-import {config} from '../src/config.js';
-import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {getStorageManager} from '../src/storageManager.js';
-import {BANNER, VIDEO} from '../src/mediaTypes.js';
-import {ajax} from '../src/ajax.js';
-import {getRefererInfo} from '../src/refererDetection.js';
-import {Renderer} from '../src/Renderer.js';
+import { logWarn, parseUrl, deepAccess, isArray, getDNT } from '../src/utils.js';
+import { config } from '../src/config.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { getStorageManager } from '../src/storageManager.js';
+import { BANNER, VIDEO } from '../src/mediaTypes.js';
+import { ajax } from '../src/ajax.js';
+import { getRefererInfo } from '../src/refererDetection.js';
+import { Renderer } from '../src/Renderer.js';
+import {createEidsArray} from './userId/eids.js';
 
 const BIDDER_CODE = 'jixie';
 export const storage = getStorageManager({bidderCode: BIDDER_CODE});
@@ -27,14 +28,14 @@ function setIds_(clientId, sessionId) {
     let expC = (new Date(new Date().setFullYear(new Date().getFullYear() + 1))).toUTCString();
     let expS = (new Date(new Date().setMinutes(new Date().getMinutes() + sidTTLMins_))).toUTCString();
 
-    storage.setCookie('_jxx', clientId, expC, 'None', null);
-    storage.setCookie('_jxx', clientId, expC, 'None', dd);
+    storage.setCookie('_jx', clientId, expC, 'None', null);
+    storage.setCookie('_jx', clientId, expC, 'None', dd);
 
-    storage.setCookie('_jxxs', sessionId, expS, 'None', null);
-    storage.setCookie('_jxxs', sessionId, expS, 'None', dd);
+    storage.setCookie('_jxs', sessionId, expS, 'None', null);
+    storage.setCookie('_jxs', sessionId, expS, 'None', dd);
 
-    storage.setDataInLocalStorage('_jxx', clientId);
-    storage.setDataInLocalStorage('_jxxs', sessionId);
+    storage.setDataInLocalStorage('_jx', clientId);
+    storage.setDataInLocalStorage('_jxs', sessionId);
   } catch (error) {}
 }
 
@@ -46,17 +47,15 @@ function fetchIds_() {
     session_id_ls: ''
   };
   try {
-    let tmp = storage.getCookie('_jxx');
+    let tmp = storage.getCookie('_jx');
     if (tmp) ret.client_id_c = tmp;
-    tmp = storage.getCookie('_jxxs');
+    tmp = storage.getCookie('_jxs');
     if (tmp) ret.session_id_c = tmp;
 
-    tmp = storage.getDataFromLocalStorage('_jxx');
+    tmp = storage.getDataFromLocalStorage('_jx');
     if (tmp) ret.client_id_ls = tmp;
-    tmp = storage.getDataFromLocalStorage('_jxxs');
+    tmp = storage.getDataFromLocalStorage('_jxs');
     if (tmp) ret.session_id_ls = tmp;
-    tmp = storage.getCookie('_jxtoko');
-    if (tmp) ret.jxtoko_id = tmp;
   } catch (error) {}
   return ret;
 }
@@ -117,12 +116,10 @@ function getMiscDims_() {
     mkeywords: ''
   }
   try {
-    // TODO: this should pick refererInfo from bidderRequest
     let refererInfo_ = getRefererInfo();
-    // TODO: does the fallback make sense here?
-    let url_ = refererInfo_?.page || window.location.href
+    let url_ = ((refererInfo_ && refererInfo_.referer) ? refererInfo_.referer : window.location.href);
     ret.pageurl = url_;
-    ret.domain = refererInfo_?.domain || window.location.host
+    ret.domain = parseUrl(url_).host;
     ret.device = getDevice_();
     let keywords = document.getElementsByTagName('meta')['keywords'];
     if (keywords && keywords.content) {
@@ -189,10 +186,12 @@ export const spec = {
     let miscDims = internal.getMiscDims();
     let schain = deepAccess(validBidRequests[0], 'schain');
 
-    let eids1 = validBidRequests[0].userIdAsEids
     // all available user ids are sent to our backend in the standard array layout:
-    if (eids1 && eids1.length) {
-      eids = eids1;
+    if (validBidRequests[0].userId) {
+      let eids1 = createEidsArray(validBidRequests[0].userId);
+      if (eids1.length) {
+        eids = eids1;
+      }
     }
     // we want to send this blob of info to our backend:
     let pg = config.getConfig('priceGranularity');

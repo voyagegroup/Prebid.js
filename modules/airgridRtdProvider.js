@@ -8,13 +8,13 @@
 import { config } from '../src/config.js';
 import { submodule } from '../src/hook.js';
 import {
+  mergeDeep,
+  isPlainObject,
   deepSetValue,
   deepAccess,
 } from '../src/utils.js';
 import { getGlobal } from '../src/prebidGlobal.js';
 import { getStorageManager } from '../src/storageManager.js';
-import { loadExternalScript } from '../src/adloader.js';
-import { MODULE_TYPE_RTD } from '../src/activities/modules.js';
 
 const MODULE_NAME = 'realTimeData';
 const SUBMODULE_NAME = 'airgrid';
@@ -22,14 +22,9 @@ const AG_TCF_ID = 782;
 export const AG_AUDIENCE_IDS_KEY = 'edkt_matched_audience_ids';
 
 export const storage = getStorageManager({
-  moduleType: MODULE_TYPE_RTD,
+  gvlid: AG_TCF_ID,
   moduleName: SUBMODULE_NAME,
 });
-
-function getModuleUrl(accountId) {
-  const path = accountId ?? 'sdk';
-  return `https://cdn.edkt.io/${path}/edgekit.min.js`;
-}
 
 /**
  * Attach script tag to DOM
@@ -39,12 +34,19 @@ function getModuleUrl(accountId) {
 export function attachScriptTagToDOM(rtdConfig) {
   var edktInitializor = (window.edktInitializor = window.edktInitializor || {});
   if (!edktInitializor.invoked) {
+    edktInitializor.invoked = true;
     edktInitializor.accountId = rtdConfig.params.accountId;
     edktInitializor.publisherId = rtdConfig.params.publisherId;
     edktInitializor.apiKey = rtdConfig.params.apiKey;
-    edktInitializor.invoked = true;
-    const moduleSrc = getModuleUrl(rtdConfig.params.accountId);
-    loadExternalScript(moduleSrc, SUBMODULE_NAME);
+    edktInitializor.load = function (e) {
+      var p = e || 'sdk';
+      var n = document.createElement('script');
+      n.type = 'module';
+      n.async = true;
+      n.src = 'https://cdn.edkt.io/' + p + '/edgekit.min.js';
+      document.getElementsByTagName('head')[0].appendChild(n);
+    };
+    edktInitializor.load(edktInitializor.accountId);
   }
 }
 
@@ -82,26 +84,25 @@ function setAudiencesToAppNexusAdUnits(adUnits, audiences) {
  * Pass audience data to configured bidders, using ORTB2
  * @param {Object} rtdConfig
  * @param {Array} audiences
- * @return {{}} a map from bidder code to ORTB2 config
+ * @return {void}
  */
-export function setAudiencesAsBidderOrtb2(rtdConfig, audiences) {
+export function setAudiencesUsingBidderOrtb2(rtdConfig, audiences) {
   const bidders = deepAccess(rtdConfig, 'params.bidders');
-  if (!bidders || bidders.length === 0 || !audiences || audiences.length === 0) return;
+  if (!bidders || bidders.length === 0) return;
+  const allBiddersConfig = config.getBidderConfig();
+  const agOrtb2 = {};
+  deepSetValue(agOrtb2, 'ortb2.user.ext.data.airgrid', audiences || []);
 
-  const keywords = audiences.map(
-    (audienceId) => `perid=${audienceId}`
-  ).join(',');
-
-  config.mergeBidderConfig({
-    bidders: bidders,
-    config: {
-      ortb2: {
-        site: {
-          keywords,
-        }
-      }
+  bidders.forEach((bidder) => {
+    let bidderConfig = {};
+    if (isPlainObject(allBiddersConfig[bidder])) {
+      bidderConfig = allBiddersConfig[bidder];
     }
-  })
+    config.setBidderConfig({
+      bidders: [bidder],
+      config: mergeDeep(bidderConfig, agOrtb2),
+    });
+  });
 }
 
 export function setAudiencesUsingAppNexusAuctionKeywords(audiences) {
@@ -141,7 +142,7 @@ export function passAudiencesToBidders(
   const audiences = getMatchedAudiencesFromStorage();
   if (audiences.length > 0) {
     setAudiencesUsingAppNexusAuctionKeywords(audiences);
-    setAudiencesAsBidderOrtb2(rtdConfig, audiences)
+    setAudiencesUsingBidderOrtb2(rtdConfig, audiences);
     if (adUnits) {
       setAudiencesToAppNexusAdUnits(adUnits, audiences);
     }
@@ -154,7 +155,6 @@ export const airgridSubmodule = {
   name: SUBMODULE_NAME,
   init: init,
   getBidRequestData: passAudiencesToBidders,
-  gvlid: AG_TCF_ID
 };
 
 submodule(MODULE_NAME, airgridSubmodule);

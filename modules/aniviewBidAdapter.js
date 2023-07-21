@@ -106,8 +106,11 @@ function buildRequests(validBidRequests, bidderRequest) {
 
       if (s2sParams.AV_APPPKGNAME && !s2sParams.AV_URL) { s2sParams.AV_URL = s2sParams.AV_APPPKGNAME; }
       if (!s2sParams.AV_IDFA && !s2sParams.AV_URL) {
-        // TODO: does it make sense to fall back to window.location here?
-        s2sParams.AV_URL = bidderRequest?.refererInfo?.page || window.location.href;
+        if (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+          s2sParams.AV_URL = bidderRequest.refererInfo.referer;
+        } else {
+          s2sParams.AV_URL = window.location.href;
+        }
       }
       if (s2sParams.AV_IDFA && !s2sParams.AV_AID) { s2sParams.AV_AID = s2sParams.AV_IDFA; }
       if (s2sParams.AV_AID && !s2sParams.AV_IDFA) { s2sParams.AV_IDFA = s2sParams.AV_AID; }
@@ -203,7 +206,7 @@ function interpretResponse(serverResponse, bidRequest) {
           let xml = new window.DOMParser().parseFromString(xmlStr, 'text/xml');
           if (xml && xml.getElementsByTagName('parsererror').length == 0) {
             let cpmData = getCpmData(xml);
-            if (cpmData.cpm > 0) {
+            if (cpmData && cpmData.cpm > 0) {
               bidResponse.requestId = bidRequest.data.bidId;
               bidResponse.ad = '';
               bidResponse.cpm = cpmData.cpm;
@@ -306,7 +309,7 @@ function getUserSyncs(syncOptions, serverResponses) {
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
-  aliases: ['avantisvideo', 'selectmediavideo', 'vidcrunch', 'openwebvideo', 'didnavideo', 'ottadvisors', 'pgammedia'],
+  aliases: ['avantisvideo', 'selectmediavideo', 'vidcrunch', 'openwebvideo', 'didnavideo', 'ottadvisors'],
   supportedMediaTypes: [VIDEO, BANNER],
   isBidRequestValid,
   buildRequests,

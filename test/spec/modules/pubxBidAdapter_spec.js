@@ -39,22 +39,14 @@ describe('pubxAdapter', function () {
         id: '26c1ee0038ac11',
         params: {
           sid: '12345abc'
-        },
-        ortb2: {
-          site: {
-            page: `${location.href}?test=1`
-          }
         }
       }
     ];
 
     const data = {
       banner: {
-        sid: '12345abc',
-        pu: encodeURIComponent(
-          utils.deepAccess(bidRequests[0], 'ortb2.site.page').replace(/\?.*$/, '')
-        ),
-      },
+        sid: '12345abc'
+      }
     };
 
     it('sends bid request to ENDPOINT via GET', function () {

@@ -1,15 +1,13 @@
-import sinon from 'sinon'
 import { expect } from 'chai';
 import { spec } from 'modules/cointrafficBidAdapter.js';
 import { config } from 'src/config.js'
 import * as utils from 'src/utils.js'
 
-const ENDPOINT_URL = 'https://apps-pbd.ctraffic.io/pb/tmp';
+const ENDPOINT_URL = 'https://apps-pbd.ctengine.io/pb/tmp';
 
 describe('cointrafficBidAdapter', function () {
   describe('isBidRequestValid', function () {
-    /** @type {BidRequest} */
-    let bidRequest = {
+    let bid = {
       bidder: 'cointraffic',
       params: {
         placementId: 'testPlacementId'
@@ -24,12 +22,11 @@ describe('cointrafficBidAdapter', function () {
     };
 
     it('should return true where required params found', function () {
-      expect(spec.isBidRequestValid(bidRequest)).to.equal(true);
+      expect(spec.isBidRequestValid(bid)).to.equal(true);
     });
   });
 
   describe('buildRequests', function () {
-    /** @type {BidRequest[]} */
     let bidRequests = [
       {
         bidder: 'cointraffic',
@@ -59,8 +56,7 @@ describe('cointrafficBidAdapter', function () {
       }
     ];
 
-    /** @type {BidderRequest} */
-    let bidderRequest = {
+    let bidderRequests = {
       refererInfo: {
         numIframes: 0,
         reachedTop: true,
@@ -72,7 +68,7 @@ describe('cointrafficBidAdapter', function () {
     };
 
     it('replaces currency with EUR if there is no currency provided', function () {
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequests);
 
       expect(request[0].data.currency).to.equal('EUR');
       expect(request[1].data.currency).to.equal('EUR');
@@ -83,7 +79,7 @@ describe('cointrafficBidAdapter', function () {
         arg => arg === 'currency.bidderCurrencyDefault.cointraffic' ? 'USD' : 'EUR'
       );
 
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequests);
 
       expect(request[0].data.currency).to.equal('USD');
       expect(request[1].data.currency).to.equal('USD');
@@ -97,7 +93,7 @@ describe('cointrafficBidAdapter', function () {
         arg => arg === 'currency.bidderCurrencyDefault.cointraffic' ? 'BTC' : 'EUR'
       );
 
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequests);
 
       expect(request[0]).to.undefined;
       expect(request[1]).to.undefined;
@@ -107,14 +103,14 @@ describe('cointrafficBidAdapter', function () {
     });
 
     it('sends bid request to our endpoint via POST', function () {
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequests);
 
       expect(request[0].method).to.equal('POST');
       expect(request[1].method).to.equal('POST');
     });
 
     it('attaches source and version to endpoint URL as query params', function () {
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequests);
 
       expect(request[0].url).to.equal(ENDPOINT_URL);
       expect(request[1].url).to.equal(ENDPOINT_URL);
@@ -123,7 +119,6 @@ describe('cointrafficBidAdapter', function () {
 
   describe('interpretResponse', function () {
     it('should get the correct bid response', function () {
-      /** @type {BidRequest[]} */
       let bidRequest = [{
         method: 'POST',
         url: ENDPOINT_URL,
@@ -147,7 +142,7 @@ describe('cointrafficBidAdapter', function () {
           height: 250,
           creativeId: 'creativeId12345',
           ttl: 90,
-          ad: '<html lang="en"><h3>I am an ad</h3></html> ',
+          ad: '<html><h3>I am an ad</h3></html> ',
           mediaType: 'banner',
           adomain: ['test.com']
         }
@@ -162,7 +157,7 @@ describe('cointrafficBidAdapter', function () {
         height: 250,
         creativeId: 'creativeId12345',
         ttl: 90,
-        ad: '<html lang="en"><h3>I am an ad</h3></html>',
+        ad: '<html><h3>I am an ad</h3></html>',
         meta: {
           mediaType: 'banner',
           advertiserDomains: [
@@ -175,58 +170,7 @@ describe('cointrafficBidAdapter', function () {
       expect(Object.keys(result)).to.deep.equal(Object.keys(expectedResponse));
     });
 
-    it('should get the correct bid response without advertiser domains specified', function () {
-      /** @type {BidRequest[]} */
-      let bidRequest = [{
-        method: 'POST',
-        url: ENDPOINT_URL,
-        data: {
-          placementId: 'testPlacementId',
-          device: 'desktop',
-          currency: 'EUR',
-          sizes: ['300x250'],
-          bidId: 'bidId12345',
-          referer: 'www.example.com'
-        }
-      }];
-
-      let serverResponse = {
-        body: {
-          requestId: 'bidId12345',
-          cpm: 3.9,
-          currency: 'EUR',
-          netRevenue: true,
-          width: 300,
-          height: 250,
-          creativeId: 'creativeId12345',
-          ttl: 90,
-          ad: '<html lang="en"><h3>I am an ad</h3></html> ',
-          mediaType: 'banner',
-        }
-      };
-
-      let expectedResponse = [{
-        requestId: 'bidId12345',
-        cpm: 3.9,
-        currency: 'EUR',
-        netRevenue: true,
-        width: 300,
-        height: 250,
-        creativeId: 'creativeId12345',
-        ttl: 90,
-        ad: '<html lang="en"><h3>I am an ad</h3></html>',
-        meta: {
-          mediaType: 'banner',
-          advertiserDomains: []
-        }
-      }];
-
-      let result = spec.interpretResponse(serverResponse, bidRequest[0]);
-      expect(Object.keys(result)).to.deep.equal(Object.keys(expectedResponse));
-    });
-
     it('should get the correct bid response with different currency', function () {
-      /** @type {BidRequest[]} */
       let bidRequest = [{
         method: 'POST',
         url: ENDPOINT_URL,
@@ -250,7 +194,7 @@ describe('cointrafficBidAdapter', function () {
           height: 250,
           creativeId: 'creativeId12345',
           ttl: 90,
-          ad: '<html lang="en"><h3>I am an ad</h3></html> ',
+          ad: '<html><h3>I am an ad</h3></html> ',
           mediaType: 'banner',
           adomain: ['test.com']
         }
@@ -265,7 +209,7 @@ describe('cointrafficBidAdapter', function () {
         height: 250,
         creativeId: 'creativeId12345',
         ttl: 90,
-        ad: '<html lang="en"><h3>I am an ad</h3></html>',
+        ad: '<html><h3>I am an ad</h3></html>',
         meta: {
           mediaType: 'banner',
           advertiserDomains: [
@@ -283,7 +227,6 @@ describe('cointrafficBidAdapter', function () {
     });
 
     it('should get empty bid response requested currency is not available', function () {
-      /** @type {BidRequest[]} */
       let bidRequest = [{
         method: 'POST',
         url: ENDPOINT_URL,
@@ -310,7 +253,6 @@ describe('cointrafficBidAdapter', function () {
     });
 
     it('should get empty bid response if no server response', function () {
-      /** @type {BidRequest[]} */
       let bidRequest = [{
         method: 'POST',
         url: ENDPOINT_URL,

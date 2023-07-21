@@ -90,9 +90,8 @@ describe('SmartHubBidAdapter', function () {
     uspConsent: '1---',
     gdprConsent: 'COvFyGBOvFyGBAbAAAENAPCAAOAAAAAAAAAAAEEUACCKAAA.IFoEUQQgAIQwgIwQABAEAAAAOIAACAIAAAAQAIAgEAACEAAAAAgAQBAAAAAAAGBAAgAAAAAAAFAAECAAAgAAQARAEQAAAAAJAAIAAgAAAYQEAAAQmAgBC3ZAYzUw',
     refererInfo: {
-      page: 'https://test.com'
-    },
-    timeout: 500
+      referer: 'https://test.com'
+    }
   };
 
   describe('isBidRequestValid', function () {

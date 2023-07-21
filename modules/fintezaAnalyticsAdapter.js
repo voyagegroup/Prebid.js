@@ -1,13 +1,11 @@
 import { parseUrl, logError } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import adapterManager from '../src/adapterManager.js';
-import {getStorageManager} from '../src/storageManager.js';
+import { getStorageManager } from '../src/storageManager.js';
 import CONSTANTS from '../src/constants.json';
-import {MODULE_TYPE_ANALYTICS} from '../src/activities/modules.js';
 
-const MODULE_CODE = 'finteza';
-const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_CODE});
+const storage = getStorageManager();
 
 const ANALYTICS_TYPE = 'endpoint';
 const FINTEZA_HOST = 'https://content.mql5.com/tr';
@@ -37,8 +35,16 @@ function getPageInfo() {
 }
 
 function getUniqId() {
+  let cookies;
+
+  try {
+    cookies = parseCookies(document.cookie);
+  } catch (a) {
+    cookies = {};
+  }
+
   let isUniqFromLS;
-  let uniq = storage.getCookie(UNIQ_ID_KEY);
+  let uniq = cookies[ UNIQ_ID_KEY ];
   if (!uniq) {
     try {
       if (storage.hasLocalStorage()) {
@@ -183,7 +189,7 @@ function initSession() {
       !checkSessionByExpires() ||
       !checkSessionByReferer() ||
       !checkSessionByDay()) {
-    sessionId = '' + timestamp + getRandAsStr(SESSION_RAND_PART); // lgtm [js/insecure-randomness]
+    sessionId = '' + timestamp + getRandAsStr(SESSION_RAND_PART);
     begin = timestamp;
 
     isNew = true;
@@ -441,7 +447,7 @@ fntzAnalyticsAdapter.enableAnalytics = function (config) {
 
 adapterManager.registerAnalyticsAdapter({
   adapter: fntzAnalyticsAdapter,
-  code: MODULE_CODE,
+  code: 'finteza'
 });
 
 export default fntzAnalyticsAdapter;

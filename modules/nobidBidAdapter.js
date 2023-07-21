@@ -3,12 +3,11 @@ import { config } from '../src/config.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
 import { getStorageManager } from '../src/storageManager.js';
-import {hasPurpose1Consent} from '../src/utils/gpdr.js';
 
 const GVLID = 816;
 const BIDDER_CODE = 'nobid';
-const storage = getStorageManager({bidderCode: BIDDER_CODE});
-window.nobidVersion = '1.3.3';
+const storage = getStorageManager({gvlid: GVLID, bidderCode: BIDDER_CODE});
+window.nobidVersion = '1.3.2';
 window.nobid = window.nobid || {};
 window.nobid.bidResponses = window.nobid.bidResponses || {};
 window.nobid.timeoutTotal = 0;
@@ -26,11 +25,20 @@ function nobidSetCookie(cname, cvalue, hours) {
 function nobidGetCookie(cname) {
   return storage.getCookie(cname);
 }
+function nobidHasPurpose1Consent(bidderRequest) {
+  let result = true;
+  if (bidderRequest && bidderRequest.gdprConsent) {
+    if (bidderRequest.gdprConsent.gdprApplies && bidderRequest.gdprConsent.apiVersion === 2) {
+      result = !!(deepAccess(bidderRequest.gdprConsent, 'vendorData.purpose.consents.1') === true);
+    }
+  }
+  return result;
+}
 function nobidBuildRequests(bids, bidderRequest) {
   var serializeState = function(divIds, siteId, adunits) {
     var filterAdUnitsByIds = function(divIds, adUnits) {
       var filtered = [];
-      if (!divIds.length) {
+      if (!divIds || !divIds.length) {
         filtered = adUnits;
       } else if (adUnits) {
         var a = [];
@@ -80,10 +88,9 @@ function nobidBuildRequests(bids, bidderRequest) {
     }
     var topLocation = function(bidderRequest) {
       var ret = '';
-      if (bidderRequest?.refererInfo?.page) {
-        ret = bidderRequest.refererInfo.page;
+      if (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+        ret = bidderRequest.refererInfo.referer;
       } else {
-        // TODO: does this fallback make sense here?
         ret = (window.context && window.context.location && window.context.location.href) ? window.context.location.href : document.location.href;
       }
       return encodeURIComponent(ret.replace(/\%/g, ''));
@@ -145,9 +152,9 @@ function nobidBuildRequests(bids, bidderRequest) {
     if (cop) state['coppa'] = cop;
     const eids = getEIDs(deepAccess(bids, '0.userIdAsEids'));
     if (eids && eids.length > 0) state['eids'] = eids;
-    if (bidderRequest && bidderRequest.ortb2) state['ortb2'] = bidderRequest.ortb2;
+    if (config && config.getConfig('ortb2')) state['ortb2'] = config.getConfig('ortb2');
     return state;
-  };
+  }
   function newAdunit(adunitObject, adunits) {
     var getAdUnit = function(divid, adunits) {
       for (var i = 0; i < adunits.length; i++) {
@@ -175,9 +182,6 @@ function nobidBuildRequests(bids, bidderRequest) {
     if (adunitObject.div) {
       a.d = adunitObject.div;
     }
-    if (adunitObject.floor) {
-      a.floor = adunitObject.floor;
-    }
     if (adunitObject.targeting) {
       a.g = adunitObject.targeting;
     } else {
@@ -203,12 +207,6 @@ function nobidBuildRequests(bids, bidderRequest) {
     }
     adunits.push(a);
     return adunits;
-  }
-  function getFloor (bid) {
-    if (bid && typeof bid.getFloor === 'function' && bid.getFloor().floor) {
-      return bid.getFloor().floor;
-    }
-    return null;
   }
   if (typeof window.nobid.refreshLimit !== 'undefined') {
     if (window.nobid.refreshLimit < window.nobid.refreshCount) return false;
@@ -236,7 +234,6 @@ function nobidBuildRequests(bids, bidderRequest) {
     if (bid.mediaType === VIDEO || (videoMediaType && (context === 'instream' || context === 'outstream'))) {
       adType = 'video';
     }
-    const floor = getFloor(bid);
 
     if (siteId) {
       newAdunit({
@@ -245,8 +242,7 @@ function nobidBuildRequests(bids, bidderRequest) {
         siteId: siteId,
         placementId: placementId,
         ad_type: adType,
-        params: bid.params,
-        floor: floor
+        params: bid.params
       },
       adunits);
     }
@@ -390,7 +386,7 @@ export const spec = {
     const endpoint = buildEndpoint();
 
     let options = {};
-    if (!hasPurpose1Consent(bidderRequest?.gdprConsent)) {
+    if (!nobidHasPurpose1Consent(bidderRequest)) {
       options = { withCredentials: false };
     }
 
@@ -449,7 +445,7 @@ export const spec = {
             type: 'image',
             url: element
           });
-        });
+        })
       }
       return syncs;
     } else {

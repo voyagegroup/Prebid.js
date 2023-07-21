@@ -11,13 +11,12 @@
  * If publisher has not defined translation file than prebid will use default prebid translation file provided here //cdn.jsdelivr.net/gh/prebid/category-mapping-file@1/freewheel-mapping.json
  */
 
-import {config} from '../src/config.js';
-import {hook, setupBeforeHookFnOnce} from '../src/hook.js';
-import {ajax} from '../src/ajax.js';
-import {logError, timestamp} from '../src/utils.js';
-import {addBidResponse} from '../src/auction.js';
-import {getCoreStorageManager} from '../src/storageManager.js';
-import {timedBidResponseHook} from '../src/utils/perfMetrics.js';
+import { config } from '../src/config.js';
+import { setupBeforeHookFnOnce, hook } from '../src/hook.js';
+import { ajax } from '../src/ajax.js';
+import { timestamp, logError } from '../src/utils.js';
+import { addBidResponse } from '../src/auction.js';
+import { getCoreStorageManager } from '../src/storageManager.js';
 
 export const storage = getCoreStorageManager('categoryTranslation');
 const DEFAULT_TRANSLATION_FILE_URL = 'https://cdn.jsdelivr.net/gh/prebid/category-mapping-file@1/freewheel-mapping.json';
@@ -34,13 +33,13 @@ export const registerAdserver = hook('async', function(adServer) {
 }, 'registerAdserver');
 registerAdserver();
 
-export const getAdserverCategoryHook = timedBidResponseHook('categoryTranslation', function getAdserverCategoryHook(fn, adUnitCode, bid, reject) {
+export function getAdserverCategoryHook(fn, adUnitCode, bid) {
   if (!bid) {
-    return fn.call(this, adUnitCode, bid, reject); // if no bid, call original and let it display warnings
+    return fn.call(this, adUnitCode); // if no bid, call original and let it display warnings
   }
 
   if (!config.getConfig('adpod.brandCategoryExclusion')) {
-    return fn.call(this, adUnitCode, bid, reject);
+    return fn.call(this, adUnitCode, bid);
   }
 
   let localStorageKey = (config.getConfig('brandCategoryTranslation.translationFile')) ? DEFAULT_IAB_TO_FW_MAPPING_KEY_PUB : DEFAULT_IAB_TO_FW_MAPPING_KEY;
@@ -63,8 +62,8 @@ export const getAdserverCategoryHook = timedBidResponseHook('categoryTranslation
       logError('Translation mapping data not found in local storage');
     }
   }
-  fn.call(this, adUnitCode, bid, reject);
-});
+  fn.call(this, adUnitCode, bid);
+}
 
 export function initTranslation(url, localStorageKey) {
   setupBeforeHookFnOnce(addBidResponse, getAdserverCategoryHook, 50);

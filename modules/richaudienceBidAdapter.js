@@ -43,8 +43,7 @@ export const spec = {
         bidderRequestId: bid.bidderRequestId,
         tagId: bid.adUnitCode,
         sizes: raiGetSizes(bid),
-        // TODO: is 'page' the right value here?
-        referer: (typeof bidderRequest.refererInfo.page != 'undefined' ? encodeURIComponent(bidderRequest.refererInfo.page) : null),
+        referer: (typeof bidderRequest.refererInfo.referer != 'undefined' ? encodeURIComponent(bidderRequest.refererInfo.referer) : null),
         numIframes: (typeof bidderRequest.refererInfo.numIframes != 'undefined' ? bidderRequest.refererInfo.numIframes : null),
         transactionId: bid.transactionId,
         timeout: config.getConfig('bidderTimeout'),
@@ -54,12 +53,10 @@ export const spec = {
         scr_rsl: raiGetResolution(),
         cpuc: (typeof window.navigator != 'undefined' ? window.navigator.hardwareConcurrency : null),
         kws: (!isEmpty(bid.params.keywords) ? bid.params.keywords : null),
-        schain: bid.schain,
-        gpid: raiSetPbAdSlot(bid)
+        schain: bid.schain
       };
 
-      // TODO: is 'page' the right value here?
-      REFERER = (typeof bidderRequest.refererInfo.page != 'undefined' ? encodeURIComponent(bidderRequest.refererInfo.page) : null)
+      REFERER = (typeof bidderRequest.refererInfo.referer != 'undefined' ? encodeURIComponent(bidderRequest.refererInfo.referer) : null)
 
       payload.gdpr_consent = '';
       payload.gdpr = false;
@@ -133,7 +130,7 @@ export const spec = {
 
       bidResponses.push(bidResponse);
     }
-    return bidResponses;
+    return bidResponses
   },
   /***
    * User Syncs
@@ -282,14 +279,6 @@ function raiGetResolution() {
     resolution = window.screen.width + 'x' + window.screen.height;
   }
   return resolution;
-}
-
-function raiSetPbAdSlot(bid) {
-  let pbAdSlot = '';
-  if (deepAccess(bid, 'ortb2Imp.ext.data.pbadslot') != null) {
-    pbAdSlot = deepAccess(bid, 'ortb2Imp.ext.data.pbadslot')
-  }
-  return pbAdSlot
 }
 
 function raiGetSyncInclude(config) {

@@ -1,4 +1,5 @@
 import {deepAccess, generateUUID, isEmpty, isFn, parseSizesInput, parseUrl} from '../src/utils.js';
+import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, VIDEO} from '../src/mediaTypes.js';
 import {find, includes} from '../src/polyfill.js';
@@ -199,8 +200,12 @@ function getBannerSizes(bid) {
   return parseSizes(deepAccess(bid, 'mediaTypes.banner.sizes') || bid.sizes);
 }
 
-function getTopWindowReferrer(bidderRequest) {
-  return bidderRequest?.refererInfo?.ref || '';
+function getTopWindowReferrer() {
+  try {
+    return window.top.document.referrer;
+  } catch (e) {
+    return '';
+  }
 }
 
 function getVideoTargetingParams(bid) {
@@ -221,7 +226,7 @@ function getVideoTargetingParams(bid) {
 
 function createVideoRequestData(bid, bidderRequest) {
   let topLocation = getTopWindowLocation(bidderRequest);
-  let topReferrer = getTopWindowReferrer(bidderRequest);
+  let topReferrer = getTopWindowReferrer();
 
   let sizes = getVideoSizes(bid);
   let firstSize = getFirstSize(sizes);
@@ -304,12 +309,13 @@ function createVideoRequestData(bid, bidderRequest) {
 }
 
 function getTopWindowLocation(bidderRequest) {
-  return parseUrl(bidderRequest?.refererInfo?.page, {decodeSearchAsString: true});
+  let url = bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.referer;
+  return parseUrl(config.getConfig('pageUrl') || url, { decodeSearchAsString: true });
 }
 
 function createBannerRequestData(bid, bidderRequest) {
   let topLocation = getTopWindowLocation(bidderRequest);
-  let topReferrer = getTopWindowReferrer(bidderRequest);
+  let topReferrer = getTopWindowReferrer();
 
   let sizes = getBannerSizes(bid);
   let bidfloor = (getBannerBidFloor(bid) == null || typeof getBannerBidFloor(bid) == 'undefined') ? 2 : getBannerBidFloor(bid);

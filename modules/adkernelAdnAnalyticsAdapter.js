@@ -1,18 +1,16 @@
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import CONSTANTS from '../src/constants.json';
 import adapterManager from '../src/adapterManager.js';
 import { logError, parseUrl, _each } from '../src/utils.js';
 import {ajax} from '../src/ajax.js';
 import {getStorageManager} from '../src/storageManager.js';
 import {config} from '../src/config.js';
-import {MODULE_TYPE_ANALYTICS} from '../src/activities/modules.js';
 
-const MODULE_CODE = 'adkernelAdn';
 const GVLID = 14;
 const ANALYTICS_VERSION = '1.0.2';
 const DEFAULT_QUEUE_TIMEOUT = 4000;
 const DEFAULT_HOST = 'tag.adkernel.com';
-const storageObj = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_CODE});
+const storageObj = getStorageManager({gvlid: GVLID});
 
 const ADK_HB_EVENTS = {
   AUCTION_INIT: 'auctionInit',
@@ -106,7 +104,7 @@ analyticsAdapter.enableAnalytics = (config) => {
 
 adapterManager.registerAnalyticsAdapter({
   adapter: analyticsAdapter,
-  code: MODULE_CODE,
+  code: 'adkernelAdn',
   gvlid: GVLID
 });
 
@@ -383,7 +381,6 @@ export function ExpiringQueue(callback, ttl) {
   }
 }
 
-// TODO: this should reuse logic from refererDetection
 function getNavigationInfo() {
   try {
     return getLocationAndReferrer(self.top);

@@ -1,5 +1,4 @@
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {getGlobal} from '../src/prebidGlobal.js';
 
 const BIDDER_CODE = 'addefend';
 
@@ -17,13 +16,12 @@ export const spec = {
   },
   buildRequests: function(validBidRequests, bidderRequest) {
     let bid = {
-      v: getGlobal().version,
+      v: $$PREBID_GLOBAL$$.version,
       auctionId: false,
       pageId: false,
       gdpr_applies: bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies ? bidderRequest.gdprConsent.gdprApplies : 'true',
       gdpr_consent: bidderRequest.gdprConsent && bidderRequest.gdprConsent.consentString ? bidderRequest.gdprConsent.consentString : '',
-      // TODO: is 'page' the correct item here?
-      referer: bidderRequest.refererInfo.page,
+      referer: bidderRequest.refererInfo.referer,
       bids: [],
     };
 

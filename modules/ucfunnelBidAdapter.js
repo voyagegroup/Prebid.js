@@ -1,9 +1,8 @@
-import { generateUUID, _each, deepAccess } from '../src/utils.js';
+import { generateUUID, _each } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, VIDEO, NATIVE} from '../src/mediaTypes.js';
 import { getStorageManager } from '../src/storageManager.js';
 import { config } from '../src/config.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const COOKIE_NAME = 'ucf_uid';
 const VER = 'ADGENT_PREBID-2018011501';
@@ -47,9 +46,6 @@ export const spec = {
    * @return {ServerRequest}
    */
   buildRequests: function(bids, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    bids = convertOrtbRequestToProprietaryNative(bids);
-
     return bids.map(bid => {
       return {
         method: 'GET',
@@ -251,7 +247,6 @@ function getRequestData(bid, bidderRequest) {
   const userIdTdid = (bid.userId && bid.userId.tdid) ? bid.userId.tdid : '';
   const supplyChain = getSupplyChain(bid.schain);
   const bidFloor = getFloor(bid, size, bid.mediaTypes);
-  const gpid = deepAccess(bid, 'ortb2Imp.ext.gpid');
   // general bid data
   let bidData = {
     ver: VER,
@@ -268,14 +263,16 @@ function getRequestData(bid, bidderRequest) {
     bidData.fp = bidFloor;
   }
 
-  if (gpid) {
-    bidData.gpid = gpid;
-  }
-
   addUserId(bidData, bid.userId);
-
-  bidData.u = bidderRequest.refererInfo.page || bidderRequest.refererInfo.topmostLocation;
-  bidData.host = bidderRequest.refererInfo.domain;
+  try {
+    bidData.host = window.top.location.hostname;
+    bidData.u = config.getConfig('publisherDomain') || window.top.location.href;
+    bidData.xr = 0;
+  } catch (e) {
+    bidData.host = window.location.hostname;
+    bidData.u = config.getConfig('publisherDomain') || bidderRequest.refererInfo.referrer || document.referrer || window.location.href;
+    bidData.xr = 1;
+  }
 
   if (window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0) {
     bidData.ao = window.location.ancestorOrigins[window.location.ancestorOrigins.length - 1];
@@ -317,10 +314,17 @@ function getRequestData(bid, bidderRequest) {
   }
 
   if (bidderRequest && bidderRequest.gdprConsent) {
-    Object.assign(bidData, {
-      gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0,
-      'euconsent-v2': bidderRequest.gdprConsent.consentString
-    });
+    if (bidderRequest.gdprConsent.apiVersion == 1) {
+      Object.assign(bidData, {
+        gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0,
+        euconsent: bidderRequest.gdprConsent.consentString
+      });
+    } else if (bidderRequest.gdprConsent.apiVersion == 2) {
+      Object.assign(bidData, {
+        gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0,
+        'euconsent-v2': bidderRequest.gdprConsent.consentString
+      });
+    }
   }
 
   if (config.getConfig('coppa')) {
@@ -334,9 +338,9 @@ function addUserId(bidData, userId) {
   bidData['eids'] = '';
   _each(userId, (userIdObjectOrValue, userIdProviderKey) => {
     switch (userIdProviderKey) {
-      case 'hadronId':
-        if (userIdObjectOrValue.hadronId) {
-          bidData[userIdProviderKey + 'hadronId'] = userIdObjectOrValue.hadronId;
+      case 'haloId':
+        if (userIdObjectOrValue.haloId) {
+          bidData[userIdProviderKey + 'haloId'] = userIdObjectOrValue.haloId;
         }
         if (userIdObjectOrValue.auSeg) {
           bidData[userIdProviderKey + '_auSeg'] = userIdObjectOrValue.auSeg;
@@ -367,6 +371,11 @@ function addUserId(bidData, userId) {
           bidData['eids'] = (bidData['eids'].length > 0)
             ? (bidData['eids'] + '!verizonMediaId,' + userIdObjectOrValue)
             : ('verizonMediaId,' + userIdObjectOrValue);
+        }
+        break;
+      case 'flocId':
+        if (userIdObjectOrValue.id) {
+          bidData['cid'] = userIdObjectOrValue.id;
         }
         break;
       default:

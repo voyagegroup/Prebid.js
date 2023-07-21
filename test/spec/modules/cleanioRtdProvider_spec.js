@@ -1,8 +1,5 @@
-import { loadExternalScriptStub } from 'test/mocks/adloaderStub.js';
 import * as utils from '../../../src/utils.js';
 import * as hook from '../../../src/hook.js'
-import * as events from '../../../src/events.js';
-import CONSTANTS from '../../../src/constants.json';
 
 import { __TEST__ } from '../../../modules/cleanioRtdProvider.js';
 
@@ -69,8 +66,10 @@ describe('clean.io RTD module', function () {
     it('pageInitStepProtectPage() should insert script element', function() {
       pageInitStepProtectPage(fakeScriptURL);
 
-      sinon.assert.calledOnce(loadExternalScriptStub);
-      sinon.assert.calledWith(loadExternalScriptStub, fakeScriptURL, 'clean.io');
+      sinon.assert.calledOnce(insertElementStub);
+      sinon.assert.calledWith(insertElementStub, sinon.match(elem => elem.tagName === 'SCRIPT'));
+      sinon.assert.calledWith(insertElementStub, sinon.match(elem => elem.type === 'text/javascript'));
+      sinon.assert.calledWith(insertElementStub, sinon.match(elem => elem.src === fakeScriptURL));
     });
   });
 
@@ -132,14 +131,14 @@ describe('clean.io RTD module', function () {
     it('should refuse initialization with incorrect parameters', function () {
       const { init } = getModule();
       expect(init({ params: { cdnUrl: 'abc', protectionMode: 'full' } }, {})).to.equal(false); // too short distribution name
-      sinon.assert.notCalled(loadExternalScriptStub);
+      sinon.assert.notCalled(insertElementStub);
     });
 
-    it('should initialize in full (page) protection mode', function () {
+    it('should iniitalize in full (page) protection mode', function () {
       const { init, onBidResponseEvent } = getModule();
       expect(init({ params: { cdnUrl: 'https://abc1234567890.cloudfront.net/script.js', protectionMode: 'full' } }, {})).to.equal(true);
-      sinon.assert.calledOnce(loadExternalScriptStub);
-      sinon.assert.calledWith(loadExternalScriptStub, 'https://abc1234567890.cloudfront.net/script.js', 'clean.io');
+      sinon.assert.calledOnce(insertElementStub);
+      sinon.assert.calledWith(insertElementStub, sinon.match(elem => elem.tagName === 'SCRIPT'));
 
       const fakeBidResponse = makeFakeBidResponse();
       onBidResponseEvent(fakeBidResponse, {}, {});
@@ -184,27 +183,6 @@ describe('clean.io RTD module', function () {
       const fakeBidResponse3 = makeFakeBidResponse();
       onBidResponseEvent(fakeBidResponse3, {}, {});
       ensurePrependToBidResponse(fakeBidResponse3);
-    });
-
-    it('should send billable event per bid won event', function () {
-      const { init } = getModule();
-      expect(init({ params: { cdnUrl: 'https://abc1234567890.cloudfront.net/script.js', protectionMode: 'full' } }, {})).to.equal(true);
-
-      const eventCounter = { registerCleanioBillingEvent: function() {} };
-      sinon.spy(eventCounter, 'registerCleanioBillingEvent');
-
-      events.on(CONSTANTS.EVENTS.BILLABLE_EVENT, (evt) => {
-        if (evt.vendor === 'clean.io') {
-          eventCounter.registerCleanioBillingEvent()
-        }
-      });
-
-      events.emit(CONSTANTS.EVENTS.BID_WON, {});
-      events.emit(CONSTANTS.EVENTS.BID_WON, {});
-      events.emit(CONSTANTS.EVENTS.BID_WON, {});
-      events.emit(CONSTANTS.EVENTS.BID_WON, {});
-
-      sinon.assert.callCount(eventCounter.registerCleanioBillingEvent, 4);
     });
   });
 });

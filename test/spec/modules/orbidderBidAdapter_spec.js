@@ -63,7 +63,7 @@ describe('orbidderBidAdapter', () => {
     return spec.buildRequests(buildRequest, {
       ...bidderRequest || {},
       refererInfo: {
-        page: 'https://localhost:9876/'
+        referer: 'https://localhost:9876/'
       }
     })[0];
   };

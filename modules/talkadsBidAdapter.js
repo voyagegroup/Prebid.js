@@ -2,7 +2,6 @@ import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { NATIVE, BANNER } from '../src/mediaTypes.js';
 import * as utils from '../src/utils.js';
 import {ajax} from '../src/ajax.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const CURRENCY = 'EUR';
 const BIDDER_CODE = 'talkads';
@@ -45,8 +44,6 @@ export const spec = {
    * @return ServerRequest Info describing the request to the server.
    */
   buildRequests: function (paValidBidRequests, poBidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    paValidBidRequests = convertOrtbRequestToProprietaryNative(paValidBidRequests);
     utils.logInfo('buildRequests : ', paValidBidRequests, poBidderRequest);
     const laBids = paValidBidRequests.map((poBid, piId) => {
       const loOne = { id: piId, ad_unit: poBid.adUnitCode, bid_id: poBid.bidId, type: '', size: [] };
@@ -63,7 +60,6 @@ export const spec = {
       cur: CURRENCY,
       timeout: poBidderRequest.timeout,
       auction_id: paValidBidRequests[0].auctionId,
-      // TODO: should this use auctionId? see #8573
       transaction_id: paValidBidRequests[0].transactionId,
       bids: laBids,
       gdpr: { applies: false, consent: false },

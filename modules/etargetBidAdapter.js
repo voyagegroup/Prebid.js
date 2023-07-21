@@ -1,4 +1,5 @@
 import { deepSetValue, isFn, isPlainObject } from '../src/utils.js';
+import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
 
@@ -90,7 +91,7 @@ export const spec = {
         mts['title'] = [(document.getElementsByTagName('title')[0] || []).innerHTML];
         mts['base'] = [(document.getElementsByTagName('base')[0] || {}).href];
         mts['referer'] = [document.location.href];
-        mts['ortb2'] = (bidderRequest.ortb2 || {});
+        mts['ortb2'] = (config.getConfig('ortb2') || {});
       } catch (e) {
         mts.error = e;
       }

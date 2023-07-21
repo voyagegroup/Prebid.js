@@ -94,9 +94,8 @@ export const spec = {
 
     if (bidderRequest) {
       timeout = bidderRequest.timeout;
-      if (bidderRequest.refererInfo && bidderRequest.refererInfo.page) {
-        // TODO: is 'page' the right value here?
-        payload.u = bidderRequest.refererInfo.page;
+      if (bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+        payload.u = bidderRequest.refererInfo.referer;
       }
       if (bidderRequest.gdprConsent) {
         if (bidderRequest.gdprConsent.consentString) {
@@ -204,16 +203,16 @@ export const spec = {
   },
   onTimeout: function(timeoutData) {
     // Call '/track/bid_timeout' with timeout data
-    const dataToSend = timeoutData.map(({ params, timeout }) => {
-      const data = { timeout };
+    timeoutData.forEach(({ params }) => {
       if (params) {
-        data.params = params.map((item) => {
-          return item && item.uid ? { uid: parseInt(item.uid) } : {};
+        params.forEach((item) => {
+          if (item && item.uid) {
+            item.uid = parseInt(item.uid);
+          }
         });
       }
-      return data;
     });
-    triggerPixel(buildUrl(TRACK_TIMEOUT_PATH) + '//' + JSON.stringify(dataToSend));
+    triggerPixel(buildUrl(TRACK_TIMEOUT_PATH) + '//' + JSON.stringify(timeoutData));
   }
 };
 
@@ -375,7 +374,7 @@ function _isAdSlotExists(adUnitCode) {
   }
 
   const gptAdSlot = getGptSlotInfoForAdUnitCode(adUnitCode);
-  if (gptAdSlot.divId && document.getElementById(gptAdSlot.divId)) {
+  if (gptAdSlot && gptAdSlot.divId && document.getElementById(gptAdSlot.divId)) {
     return true;
   }
 

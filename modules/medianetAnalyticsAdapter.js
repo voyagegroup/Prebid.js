@@ -8,16 +8,16 @@ import {
   logError,
   logInfo,
   triggerPixel,
-  uniques
+  uniques,
+  getHighestCpm
 } from '../src/utils.js';
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import adapterManager from '../src/adapterManager.js';
 import CONSTANTS from '../src/constants.json';
 import {ajax} from '../src/ajax.js';
 import {getRefererInfo} from '../src/refererDetection.js';
 import {AUCTION_COMPLETED, AUCTION_IN_PROGRESS, getPriceGranularity} from '../src/auction.js';
 import {includes} from '../src/polyfill.js';
-import {getGlobal} from '../src/prebidGlobal.js';
 
 const analyticsType = 'endpoint';
 const ENDPOINT = 'https://pb-logs.media.net/log?logid=kfk&evtid=prebid_analytics_events_client';
@@ -37,11 +37,9 @@ const PRICE_GRANULARITY = {
 
 const MEDIANET_BIDDER_CODE = 'medianet';
 // eslint-disable-next-line no-undef
-const PREBID_VERSION = getGlobal().version;
+const PREBID_VERSION = $$PREBID_GLOBAL$$.version;
 const ERROR_CONFIG_JSON_PARSE = 'analytics_config_parse_fail';
 const ERROR_CONFIG_FETCH = 'analytics_config_ajax_fail';
-const ERROR_WINNING_BID_ABSENT = 'winning_bid_absent';
-const ERROR_WINNING_AUCTION_MISSING = 'winning_auction_missing';
 const BID_SUCCESS = 1;
 const BID_NOBID = 2;
 const BID_TIMEOUT = 3;
@@ -53,7 +51,7 @@ const CONFIG_PASS = 1;
 const CONFIG_ERROR = 3;
 
 const VALID_URL_KEY = ['canonical_url', 'og_url', 'twitter_url'];
-const DEFAULT_URL_KEY = 'topmostLocation';
+const DEFAULT_URL_KEY = 'page';
 
 const LOG_TYPE = {
   APPR: 'APPR',
@@ -64,7 +62,6 @@ let auctions = {};
 let config;
 let pageDetails;
 let logsQueue = [];
-let errorQueue = [];
 
 class ErrorLogger {
   constructor(event, additionalData) {
@@ -73,7 +70,7 @@ class ErrorLogger {
     this.evtid = 'projectevents';
     this.project = 'prebidanalytics';
     this.dn = pageDetails.domain || '';
-    this.requrl = pageDetails.topmostLocation || '';
+    this.requrl = pageDetails.requrl || '';
     this.pbversion = PREBID_VERSION;
     this.cid = config.cid || '';
     this.rd = additionalData;
@@ -81,7 +78,6 @@ class ErrorLogger {
 
   send() {
     let url = EVENT_PIXEL_URL + '?' + formatQS(this);
-    errorQueue.push(url);
     triggerPixel(url);
   }
 }
@@ -164,7 +160,7 @@ class Configure {
 
   init() {
     // Forces Logging % to 100%
-    let urlObj = URL.parseUrl(pageDetails.topmostLocation);
+    let urlObj = URL.parseUrl(pageDetails.page);
     if (deepAccess(urlObj, 'search.medianet_test') || urlObj.hostname === 'localhost') {
       this.loggingPercent = 100;
       this.ajaxState = CONFIG_PASS;
@@ -186,20 +182,27 @@ class Configure {
 
 class PageDetail {
   constructor () {
+    const canonicalUrl = this._getUrlFromSelector('link[rel="canonical"]', 'href');
     const ogUrl = this._getUrlFromSelector('meta[property="og:url"]', 'content');
     const twitterUrl = this._getUrlFromSelector('meta[name="twitter:url"]', 'content');
     const refererInfo = getRefererInfo();
 
-    // TODO: are these the right refererInfo values?
-    this.domain = refererInfo.domain;
-    this.page = refererInfo.page;
+    this.domain = URL.parseUrl(refererInfo.referer).hostname;
+    this.page = refererInfo.referer;
     this.is_top = refererInfo.reachedTop;
-    this.referrer = refererInfo.ref || window.document.referrer;
-    this.canonical_url = refererInfo.canonicalUrl;
+    this.referrer = this._getTopWindowReferrer();
+    this.canonical_url = canonicalUrl;
     this.og_url = ogUrl;
     this.twitter_url = twitterUrl;
-    this.topmostLocation = refererInfo.topmostLocation;
     this.screen = this._getWindowSize();
+  }
+
+  _getTopWindowReferrer() {
+    try {
+      return window.top.document.referrer;
+    } catch (e) {
+      return document.referrer;
+    }
   }
 
   _getWindowSize() {
@@ -232,7 +235,7 @@ class PageDetail {
 
   getLoggingData() {
     return {
-      requrl: this[config.urlToConsume] || this.topmostLocation,
+      requrl: this[config.urlToConsume] || this.page,
       dn: this.domain,
       ref: this.referrer,
       screen: this.screen
@@ -271,52 +274,6 @@ class AdSlot {
   }
 }
 
-class BidWrapper {
-  constructor() {
-    this.bidReqs = [];
-    this.bidObjs = [];
-  }
-
-  findReqBid(bidId) {
-    return this.bidReqs.find(bid => {
-      return bid['bidId'] === bidId
-    });
-  }
-
-  findBidObj(key, value) {
-    return this.bidObjs.find(bid => {
-      return bid[key] === value
-    });
-  }
-
-  addBidReq(bidRequest) {
-    this.bidReqs.push(bidRequest)
-  }
-
-  addBidObj(bidObj) {
-    if (!(bidObj instanceof Bid)) {
-      bidObj = Bid.getInstance(bidObj);
-    }
-    const bidReq = this.findReqBid(bidObj.bidId);
-    if (bidReq instanceof Bid) {
-      bidReq.used = true;
-    }
-    this.bidObjs.push(bidObj);
-  }
-
-  getAdSlotBids(adSlot) {
-    const bidResponses = this.getAdSlotBidObjs(adSlot);
-    return bidResponses.map((bid) => bid.getLoggingData());
-  }
-
-  getAdSlotBidObjs(adSlot) {
-    const bidResponses = this.bidObjs
-      .filter((bid) => bid.adUnitCode === adSlot);
-    const remResponses = this.bidReqs.filter(bid => !bid.used && bid.adUnitCode === adSlot);
-    return [...bidResponses, ...remResponses];
-  }
-}
-
 class Bid {
   constructor(bidId, bidder, src, start, adUnitCode, mediaType, allMediaTypeSizes) {
     this.bidId = bidId;
@@ -346,9 +303,6 @@ class Bid {
     this.floorPrice = undefined;
     this.floorRule = undefined;
     this.serverLatencyMillis = undefined;
-    this.used = false;
-    this.originalRequestId = bidId;
-    this.requestId = undefined;
   }
 
   get size() {
@@ -358,15 +312,8 @@ class Bid {
     return this.width + 'x' + this.height;
   }
 
-  static getInstance(bidProps) {
-    const bidObj = new Bid();
-    return bidProps && Object.assign(bidObj, bidProps);
-  }
-
   getLoggingData() {
     return {
-      reqId: this.requestId || this.bidId,
-      ogReqId: this.originalRequestId,
       adid: this.adId,
       pvnm: this.bidder,
       src: this.src,
@@ -398,7 +345,7 @@ class Auction {
   constructor(acid) {
     this.acid = acid;
     this.status = AUCTION_IN_PROGRESS;
-    this.bidWrapper = new BidWrapper();
+    this.bids = [];
     this.adSlots = {};
     this.auctionInitTime = undefined;
     this.auctionStartTime = undefined;
@@ -435,31 +382,28 @@ class Auction {
   addSlot({ adUnitCode, supplyAdCode, mediaTypes, allMediaTypeSizes, tmax, adext, context }) {
     if (adUnitCode && this.adSlots[adUnitCode] === undefined) {
       this.adSlots[adUnitCode] = new AdSlot(tmax, supplyAdCode, context, adext);
-      this.addBidObj(new Bid('-1', DUMMY_BIDDER, 'client', Date.now(), adUnitCode, mediaTypes, allMediaTypeSizes));
+      this.addBid(new Bid('-1', DUMMY_BIDDER, 'client', '-1', adUnitCode, mediaTypes, allMediaTypeSizes));
     }
   }
 
   addBid(bid) {
-    this.bidWrapper.addBidReq(bid);
+    this.bids.push(bid);
   }
 
-  addBidObj(bidObj) {
-    this.bidWrapper.addBidObj(bidObj)
+  findBid(key, value) {
+    return this.bids.filter(bid => {
+      return bid[key] === value
+    })[0];
   }
 
-  findReqBid(bidId) {
-    return this.bidWrapper.findReqBid(bidId)
+  getAdslotBids(adslot) {
+    return this.bids
+      .filter((bid) => bid.adUnitCode === adslot)
+      .map((bid) => bid.getLoggingData());
   }
 
-  findBidObj(key, value) {
-    return this.bidWrapper.findBidObj(key, value)
-  }
-
-  getAdSlotBids(adSlot) {
-    return this.bidWrapper.getAdSlotBids(adSlot);
-  }
-  getAdSlotBidObjs(adSlot) {
-    return this.bidWrapper.getAdSlotBidObjs(adSlot);
+  getWinnerAdslotBid(adslot) {
+    return this.getAdslotBids(adslot).filter((bid) => bid.winner);
   }
 
   _mergeFieldsToLog(objParams) {
@@ -558,26 +502,41 @@ function _getSizes(mediaTypes, sizes) {
   }
 }
 
+/*
+  - The code is used to determine if the current bid is higher than the previous bid.
+  - If it is, then the code will return true and if not, it will return false.
+  */
+function canSelectCurrentBid(previousBid, currentBid) {
+  if (!(previousBid instanceof Bid)) return false;
+
+  // For first bid response the previous bid will be containing bid request obj
+  // in which the cpm would be undefined so the current bid can directly be selected.
+  const isFirstBidResponse = previousBid.cpm === undefined && currentBid.cpm !== undefined;
+  if (isFirstBidResponse) return true;
+
+  // if there are 2 bids, get the highest bid
+  const selectedBid = getHighestCpm(previousBid, currentBid);
+
+  // Return true if selectedBid is currentBid,
+  // The timeToRespond field is used as an identifier for distinguishing
+  // between the current iterating bid and the previous bid.
+  return selectedBid.timeToRespond === currentBid.timeToRespond;
+}
+
 function bidResponseHandler(bid) {
-  const { width, height, mediaType, cpm, requestId, timeToRespond, auctionId, dealId, originalRequestId, bidder } = bid;
-  const {originalCpm, creativeId, adId, currency} = bid;
+  const { width, height, mediaType, cpm, requestId, timeToRespond, auctionId, dealId } = bid;
+  const {originalCpm, bidderCode, creativeId, adId, currency} = bid;
 
   if (!(auctions[auctionId] instanceof Auction)) {
     return;
   }
-  const reqId = originalRequestId || requestId;
-  const bidReq = auctions[auctionId].findReqBid(reqId);
-
-  if (!(bidReq instanceof Bid)) return;
-
-  let bidObj = auctions[auctionId].findBidObj('bidId', requestId);
-  let isBidOverridden = true;
-  if (!bidObj || bidObj.status === BID_SUCCESS) {
-    bidObj = {};
-    isBidOverridden = false;
+  let bidObj = auctions[auctionId].findBid('bidId', requestId);
+  if (!canSelectCurrentBid(bidObj, bid)) {
+    return;
   }
-  Object.assign(bidObj, bidReq,
-    { cpm, width, height, mediaType, timeToRespond, dealId, creativeId, originalRequestId, requestId },
+  Object.assign(
+    bidObj,
+    { cpm, width, height, mediaType, timeToRespond, dealId, creativeId },
     { adId, currency }
   );
   bidObj.floorPrice = deepAccess(bid, 'floorData.floorValue');
@@ -596,7 +555,7 @@ function bidResponseHandler(bid) {
     bidObj.status = BID_SUCCESS;
   }
 
-  if (bidder === MEDIANET_BIDDER_CODE && bid.ext instanceof Object) {
+  if (bidderCode === MEDIANET_BIDDER_CODE && bid.ext instanceof Object) {
     Object.assign(
       bidObj,
       { 'ext': bid.ext },
@@ -607,7 +566,6 @@ function bidResponseHandler(bid) {
   if (typeof bid.serverResponseTimeMs !== 'undefined') {
     bidObj.serverLatencyMillis = bid.serverResponseTimeMs;
   }
-  !isBidOverridden && auctions[auctionId].addBidObj(bidObj);
 }
 
 function noBidResponseHandler({ auctionId, bidId }) {
@@ -617,13 +575,11 @@ function noBidResponseHandler({ auctionId, bidId }) {
   if (auctions[auctionId].hasEnded()) {
     return;
   }
-  const bidReq = auctions[auctionId].findReqBid(bidId);
-  if (!(bidReq instanceof Bid) || bidReq.used) {
+  let bidObj = auctions[auctionId].findBid('bidId', bidId);
+  if (!(bidObj instanceof Bid)) {
     return;
   }
-  const bidObj = {...bidReq};
   bidObj.status = BID_NOBID;
-  auctions[auctionId].addBidObj(bidObj);
 }
 
 function bidTimeoutHandler(timedOutBids) {
@@ -631,13 +587,11 @@ function bidTimeoutHandler(timedOutBids) {
     if (!(auctions[auctionId] instanceof Auction)) {
       return;
     }
-    const bidReq = auctions[auctionId].findReqBid('bidId', bidId);
-    if (!(bidReq instanceof Bid) || bidReq.used) {
+    let bidObj = auctions[auctionId].findBid('bidId', bidId);
+    if (!(bidObj instanceof Bid)) {
       return;
     }
-    const bidObj = {...bidReq};
     bidObj.status = BID_TIMEOUT;
-    auctions[auctionId].addBidObj(bidObj);
   })
 }
 
@@ -668,13 +622,13 @@ function setTargetingHandler(params) {
       const winnerAdId = params[adunit][CONSTANTS.TARGETING_KEYS.AD_ID];
       let winningBid;
       let bidAdIds = Object.keys(targetingObj).map(k => targetingObj[k]);
-      auctionObj.bidWrapper.bidObjs.filter((bid) => bidAdIds.indexOf(bid.adId) !== -1).map(function(bid) {
+      auctionObj.bids.filter((bid) => bidAdIds.indexOf(bid.adId) !== -1).map(function(bid) {
         bid.iwb = 1;
         if (bid.adId === winnerAdId) {
           winningBid = bid;
         }
       });
-      auctionObj.bidWrapper.bidObjs.forEach(bid => {
+      auctionObj.bids.forEach(bid => {
         if (bid.bidder === DUMMY_BIDDER && bid.adUnitCode === adunit) {
           bid.iwb = bidAdIds.length === 0 ? 0 : 1;
           bid.width = deepAccess(winningBid, 'width');
@@ -687,33 +641,17 @@ function setTargetingHandler(params) {
 }
 
 function bidWonHandler(bid) {
-  const { auctionId, adUnitCode, adId, bidder, requestId, originalRequestId } = bid;
+  const { requestId, auctionId, adUnitCode } = bid;
   if (!(auctions[auctionId] instanceof Auction)) {
-    new ErrorLogger(ERROR_WINNING_AUCTION_MISSING, {
-      adId,
-      auctionId,
-      adUnitCode,
-      bidder,
-      requestId,
-      originalRequestId
-    }).send();
     return;
   }
-  let bidObj = auctions[auctionId].findBidObj('adId', adId);
+  let bidObj = auctions[auctionId].findBid('bidId', requestId);
   if (!(bidObj instanceof Bid)) {
-    new ErrorLogger(ERROR_WINNING_BID_ABSENT, {
-      adId,
-      auctionId,
-      adUnitCode,
-      bidder,
-      requestId,
-      originalRequestId
-    }).send();
     return;
   }
   auctions[auctionId].bidWonTime = Date.now();
   bidObj.winner = 1;
-  sendEvent(auctionId, adUnitCode, LOG_TYPE.RA, bidObj.adId);
+  sendEvent(auctionId, adUnitCode, LOG_TYPE.RA);
 }
 
 function isSampled() {
@@ -724,12 +662,12 @@ function isValidAuctionAdSlot(acid, adtag) {
   return (auctions[acid] instanceof Auction) && (auctions[acid].adSlots[adtag] instanceof AdSlot);
 }
 
-function sendEvent(id, adunit, logType, adId) {
+function sendEvent(id, adunit, logType) {
   if (!isValidAuctionAdSlot(id, adunit)) {
     return;
   }
   if (logType === LOG_TYPE.RA) {
-    fireAuctionLog(id, adunit, logType, adId);
+    fireAuctionLog(id, adunit, logType);
   } else {
     fireApPrLog(id, adunit, logType)
   }
@@ -750,7 +688,7 @@ function getCommonLoggingData(acid, adtag) {
   return Object.assign(commonParams, adunitParams, auctionParams);
 }
 
-function fireAuctionLog(acid, adtag, logType, adId) {
+function fireAuctionLog(acid, adtag, logType) {
   let commonParams = getCommonLoggingData(acid, adtag);
   commonParams.lgtp = logType;
   let targeting = deepAccess(commonParams, 'targ');
@@ -761,13 +699,10 @@ function fireAuctionLog(acid, adtag, logType, adId) {
   let bidParams;
 
   if (logType === LOG_TYPE.RA) {
-    const winningBidObj = auctions[acid].findBidObj('adId', adId);
-    if (!winningBidObj) return;
-    const winLogData = winningBidObj.getLoggingData();
-    bidParams = [winLogData];
+    bidParams = auctions[acid].getWinnerAdslotBid(adtag);
     commonParams.lper = 1;
   } else {
-    bidParams = auctions[acid].getAdSlotBids(adtag).map(({winner, ...restParams}) => restParams);
+    bidParams = auctions[acid].getAdslotBids(adtag).map(({winner, ...restParams}) => restParams);
     delete commonParams.wts;
   }
   let mnetPresent = bidParams.filter(b => b.pvnm === MEDIANET_BIDDER_CODE).length > 0;
@@ -832,12 +767,8 @@ let medianetAnalytics = Object.assign(adapter({URL, analyticsType}), {
   getlogsQueue() {
     return logsQueue;
   },
-  getErrorQueue() {
-    return errorQueue;
-  },
   clearlogsQueue() {
     logsQueue = [];
-    errorQueue = [];
     auctions = {};
   },
   track({ eventType, args }) {
@@ -887,8 +818,8 @@ medianetAnalytics.enableAnalytics = function (configuration) {
     logError('Media.net Analytics adapter: cid is required.');
     return;
   }
-  getGlobal().medianetGlobals = getGlobal().medianetGlobals || {};
-  getGlobal().medianetGlobals.analyticsEnabled = true;
+  $$PREBID_GLOBAL$$.medianetGlobals = $$PREBID_GLOBAL$$.medianetGlobals || {};
+  $$PREBID_GLOBAL$$.medianetGlobals.analyticsEnabled = true;
 
   pageDetails = new PageDetail();
 

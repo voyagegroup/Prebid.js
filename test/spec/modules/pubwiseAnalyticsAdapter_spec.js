@@ -1,7 +1,6 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import pubwiseAnalytics from 'modules/pubwiseAnalyticsAdapter.js';
-import {expectEvents} from '../../helpers/analytics.js';
-
+import {server} from 'test/mocks/xhr.js';
 let events = require('src/events');
 let adapterManager = require('src/adapterManager').default;
 let constants = require('src/constants.json');
@@ -59,16 +58,23 @@ describe('PubWise Prebid Analytics', function () {
 
       sandbox.spy(pubwiseAnalytics, 'track');
 
-      expectEvents([
-        constants.EVENTS.AUCTION_INIT,
-        constants.EVENTS.BID_REQUESTED,
-        constants.EVENTS.BID_RESPONSE,
-        constants.EVENTS.BID_WON,
-        constants.EVENTS.AD_RENDER_FAILED,
-        constants.EVENTS.TCF2_ENFORCEMENT,
-        constants.EVENTS.BID_TIMEOUT,
-        constants.EVENTS.AUCTION_END,
-      ]).to.beTrackedBy(pubwiseAnalytics.track);
+      // sent
+      events.emit(constants.EVENTS.AUCTION_INIT, mock.AUCTION_INIT);
+      events.emit(constants.EVENTS.BID_REQUESTED, {});
+      events.emit(constants.EVENTS.BID_RESPONSE, {});
+      events.emit(constants.EVENTS.BID_WON, {});
+      events.emit(constants.EVENTS.AD_RENDER_FAILED, {});
+      events.emit(constants.EVENTS.TCF2_ENFORCEMENT, {});
+      events.emit(constants.EVENTS.BID_TIMEOUT, {});
+
+      // forces flush
+      events.emit(constants.EVENTS.AUCTION_END, {});
+
+      // eslint-disable-next-line
+      //console.log(requests);   
+
+      /* testing for 6 calls, including the 2 we're not currently tracking */
+      sandbox.assert.callCount(pubwiseAnalytics.track, 7);
     });
 
     it('should initialize the auction properly', function () {
@@ -86,7 +92,7 @@ describe('PubWise Prebid Analytics', function () {
       let request = requests[0];
       let data = JSON.parse(request.requestBody);
       // eslint-disable-next-line
-      // console.log(data.metaData);
+      // console.log(data.metaData);            
       expect(data.metaData, 'metaData property').to.exist;
       expect(data.metaData.pbjs_version, 'pbjs version').to.equal('$prebid.version$')
       expect(data.metaData.session_id, 'session id').not.to.be.empty

@@ -25,8 +25,7 @@ export const spec = {
       }).filter((value, index, self) => {
         return self.indexOf(value) === index
       }),
-      // TODO: is 'page' the right value here?
-      referer: bidderRequest.refererInfo.page,
+      referer: bidderRequest.refererInfo.referer,
       sw: dim.screenWidth,
       sh: dim.screenHeight,
       ww: dim.innerWidth,

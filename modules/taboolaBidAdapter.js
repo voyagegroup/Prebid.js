@@ -3,15 +3,13 @@
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER} from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
-import {deepAccess, getWindowSelf, replaceAuctionPrice} from '../src/utils.js'
+import {getWindowSelf, getWindowTop} from '../src/utils.js'
 import {getStorageManager} from '../src/storageManager.js';
-import { ajax } from '../src/ajax.js';
 
 const BIDDER_CODE = 'taboola';
 const GVLID = 42;
 const CURRENCY = 'USD';
-export const END_POINT_URL = 'https://display.bidder.taboola.com/OpenRTB/TaboolaHB/auction';
-export const USER_SYNC_IMG_URL = 'https://trc.taboola.com/sg/prebidJS/1/cm';
+export const END_POINT_URL = 'https://hb.bidder.taboola.com/TaboolaHBOpenRTBRequestHandlerServlet';
 const USER_ID = 'user-id';
 const STORAGE_KEY = `taboola global:${USER_ID}`;
 const COOKIE_KEY = 'trc_cookie_storage';
@@ -24,7 +22,7 @@ const COOKIE_KEY = 'trc_cookie_storage';
  * 4. new user set it to 0
  */
 export const userData = {
-  storageManager: getStorageManager({bidderCode: BIDDER_CODE}),
+  storageManager: getStorageManager({gvlid: GVLID, bidderCode: BIDDER_CODE}),
   getUserId: () => {
     const {getFromLocalStorage, getFromCookie, getFromTRC} = userData;
 
@@ -62,10 +60,30 @@ export const userData = {
 
 export const internal = {
   getPageUrl: (refererInfo = {}) => {
-    return refererInfo?.page || getWindowSelf().location.href;
+    if (refererInfo.canonicalUrl) {
+      return refererInfo.canonicalUrl;
+    }
+
+    if (config.getConfig('pageUrl')) {
+      return config.getConfig('pageUrl');
+    }
+
+    try {
+      return getWindowTop().location.href;
+    } catch (e) {
+      return getWindowSelf().location.href;
+    }
   },
   getReferrer: (refererInfo = {}) => {
-    return refererInfo?.ref || getWindowSelf().document.referrer;
+    if (refererInfo.referer) {
+      return refererInfo.referer;
+    }
+
+    try {
+      return getWindowTop().document.referrer;
+    } catch (e) {
+      return getWindowSelf().document.referrer;
+    }
   }
 }
 
@@ -83,7 +101,7 @@ export const spec = {
     const [bidRequest] = validBidRequests;
     const {refererInfo, gdprConsent = {}, uspConsent} = bidderRequest;
     const {publisherId} = bidRequest.params;
-    const site = getSiteProperties(bidRequest.params, refererInfo, bidderRequest.ortb2);
+    const site = getSiteProperties(bidRequest.params, refererInfo);
     const device = {ua: navigator.userAgent};
     const imps = getImps(validBidRequests);
     const user = {
@@ -104,19 +122,13 @@ export const spec = {
       regs.ext.us_privacy = uspConsent;
     }
 
-    if (bidderRequest.ortb2?.regs?.gpp) {
-      regs.ext.gpp = bidderRequest.ortb2.regs.gpp;
-      regs.ext.gpp_sid = bidderRequest.ortb2.regs.gpp_sid;
-    }
-
     if (config.getConfig('coppa')) {
-      regs.coppa = 1;
+      regs.coppa = 1
     }
 
-    const ortb2 = bidderRequest.ortb2 || {
-      bcat: [],
+    const ortb2 = config.getConfig('ortb2') || {
       badv: [],
-      wlang: []
+      bcat: []
     };
 
     const request = {
@@ -126,14 +138,10 @@ export const spec = {
       device,
       source: {fd: 1},
       tmax: bidderRequest.timeout,
-      bcat: ortb2.bcat || bidRequest.params.bcat || [],
-      badv: ortb2.badv || bidRequest.params.badv || [],
-      wlang: ortb2.wlang || bidRequest.params.wlang || [],
+      bcat: ortb2.bcat,
+      badv: ortb2.badv,
       user,
-      regs,
-      ext: {
-        pageType: ortb2?.ext?.data?.pageType || ortb2?.ext?.data?.section || bidRequest.params.pageType
-      }
+      regs
     };
 
     const url = [END_POINT_URL, publisherId].join('/');
@@ -159,47 +167,18 @@ export const spec = {
       return [];
     }
 
-    return bidResponses.map((bidResponse) => getBid(bids, currency, bidResponse)).filter(Boolean);
-  },
-  onBidWon: (bid) => {
-    if (bid.nurl) {
-      const resolvedNurl = replaceAuctionPrice(bid.nurl, bid.originalCpm);
-      ajax(resolvedNurl);
-    }
-  },
-  getUserSyncs: function(syncOptions, serverResponses, gdprConsent, uspConsent, gppConsent) {
-    const syncs = []
-    const queryParams = [];
-    if (gdprConsent) {
-      queryParams.push(`gdpr=${Number(gdprConsent.gdprApplies && 1)}&gdpr_consent=${encodeURIComponent(gdprConsent.consentString || '')}`);
-    }
-
-    if (uspConsent) {
-      queryParams.push('us_privacy=' + encodeURIComponent(uspConsent));
-    }
-
-    if (gppConsent) {
-      queryParams.push('gpp=' + encodeURIComponent(gppConsent));
-    }
-
-    if (syncOptions.pixelEnabled) {
-      syncs.push({
-        type: 'image',
-        url: USER_SYNC_IMG_URL + (queryParams.length ? '?' + queryParams.join('&') : '')
-      });
-    }
-    return syncs;
+    return bids.map((bid, id) => getBid(bid.bidId, currency, bidResponses[id])).filter(Boolean);
   },
 };
 
-function getSiteProperties({publisherId}, refererInfo, ortb2) {
+function getSiteProperties({publisherId, bcat = []}, refererInfo) {
   const {getPageUrl, getReferrer} = internal;
   return {
     id: publisherId,
     name: publisherId,
-    domain: ortb2?.site?.domain || refererInfo?.domain || window.location?.host,
-    page: ortb2?.site?.page || getPageUrl(refererInfo),
-    ref: ortb2?.site?.ref || getReferrer(refererInfo),
+    domain: window.location.host,
+    page: getPageUrl(refererInfo),
+    ref: getReferrer(refererInfo),
     publisher: {
       id: publisherId
     },
@@ -211,39 +190,20 @@ function getSiteProperties({publisherId}, refererInfo, ortb2) {
 
 function getImps(validBidRequests) {
   return validBidRequests.map((bid, id) => {
-    const {tagId, position} = bid.params;
-    const imp = {
+    const {tagId, bidfloor = null, bidfloorcur = CURRENCY} = bid.params;
+
+    return {
       id: id + 1,
-      banner: getBanners(bid, position),
-      tagid: tagId
-    }
-    if (typeof bid.getFloor === 'function') {
-      const floorInfo = bid.getFloor({
-        currency: CURRENCY,
-        mediaType: BANNER,
-        size: '*'
-      });
-      if (typeof floorInfo === 'object' && floorInfo.currency === CURRENCY && !isNaN(parseFloat(floorInfo.floor))) {
-        imp.bidfloor = parseFloat(floorInfo.floor);
-        imp.bidfloorcur = CURRENCY;
-      }
-    } else {
-      const {bidfloor = null, bidfloorcur = CURRENCY} = bid.params;
-      imp.bidfloor = bidfloor;
-      imp.bidfloorcur = bidfloorcur;
-    }
-    imp['ext'] = {
-      gpid: deepAccess(bid, 'ortb2Imp.ext.gpid')
-    }
-    return imp;
+      banner: getBanners(bid),
+      tagid: tagId,
+      bidfloor,
+      bidfloorcur,
+    };
   });
 }
 
-function getBanners(bid, pos) {
-  return {
-    ...getSizes(bid.sizes),
-    pos: pos
-  }
+function getBanners(bid) {
+  return getSizes(bid.sizes);
 }
 
 function getSizes(sizes) {
@@ -264,7 +224,7 @@ function getBidResponses({body}) {
 
   const {seatbid, cur} = body;
 
-  if (!seatbid.length || !seatbid[0].bid || !seatbid[0].bid.length) {
+  if (!seatbid.length || !seatbid[0].bid) {
     return [];
   }
 
@@ -274,23 +234,22 @@ function getBidResponses({body}) {
   };
 }
 
-function getBid(bids, currency, bidResponse) {
+function getBid(requestId, currency, bidResponse) {
   if (!bidResponse) {
     return;
   }
-  let {
-    price: cpm, nurl, crid: creativeId, adm: ad, w: width, h: height, exp: ttl, adomain: advertiserDomains, meta = {}
+
+  const {
+    price: cpm, crid: creativeId, adm: ad, w: width, h: height, adomain: advertiserDomains, meta = {}
   } = bidResponse;
-  let requestId = bids[bidResponse.impid - 1].bidId;
+
   if (advertiserDomains && advertiserDomains.length > 0) {
     meta.advertiserDomains = advertiserDomains
   }
 
-  ad = replaceAuctionPrice(ad, cpm);
-
   return {
     requestId,
-    ttl,
+    ttl: 360,
     mediaType: BANNER,
     cpm,
     creativeId,
@@ -299,8 +258,7 @@ function getBid(bids, currency, bidResponse) {
     width,
     height,
     meta,
-    nurl,
-    netRevenue: true
+    netRevenue: false
   };
 }
 

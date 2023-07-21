@@ -5,7 +5,7 @@ import { server } from 'test/mocks/xhr.js';
 resetLiveIntentIdSubmodule();
 liveIntentIdSubmodule.setModuleMode('standard')
 const PUBLISHER_ID = '89899';
-const defaultConfigParams = { params: {publisherId: PUBLISHER_ID, fireEventDelay: 1} };
+const defaultConfigParams = { params: {publisherId: PUBLISHER_ID} };
 const responseHeader = {'Content-Type': 'application/json'}
 
 describe('LiveIntentId', function() {
@@ -45,7 +45,7 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(defaultConfigParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
+    let request = server.requests[1];
     expect(request.url).to.match(/.*us_privacy=1YNY.*&gdpr=1&n3pc=1&gdpr_consent=consentDataString.*/);
     const response = {
       unifiedId: 'a_unified_id',
@@ -59,31 +59,25 @@ describe('LiveIntentId', function() {
     expect(callBackSpy.calledOnceWith(response)).to.be.true;
   });
 
-  it('should fire an event when getId', function(done) {
+  it('should fire an event when getId', function() {
     uspConsentDataStub.returns('1YNY');
     gdprConsentDataStub.returns({
       gdprApplies: true,
       consentString: 'consentDataString'
     })
     liveIntentIdSubmodule.getId(defaultConfigParams);
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*&us_privacy=1YNY.*&wpn=prebid.*&gdpr=1&n3pc=1&n3pct=1&nb=1&gdpr_consent=consentDataString.*/);
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*&us_privacy=1YNY.*&wpn=prebid.*&gdpr=1&n3pc=1&n3pct=1&nb=1&gdpr_consent=consentDataString.*/);
   });
 
-  it('should fire an event when getId and a hash is provided', function(done) {
+  it('should fire an event when getId and a hash is provided', function() {
     liveIntentIdSubmodule.getId({ params: {
       ...defaultConfigParams,
       emailHash: '58131bc547fb87af94cebdaf3102321f'
     }});
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*e=58131bc547fb87af94cebdaf3102321f.+/)
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*e=58131bc547fb87af94cebdaf3102321f.+/)
   });
 
-  it('should initialize LiveConnect with the config params when decode and emit an event', function (done) {
+  it('should initialize LiveConnect with the config params when decode and emit an event', function () {
     liveIntentIdSubmodule.decode({}, { params: {
       ...defaultConfigParams.params,
       ...{
@@ -94,112 +88,52 @@ describe('LiveIntentId', function() {
         }
       }
     }});
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/collector.liveintent.com\/j\?.*aid=a-0001.*&wpn=prebid.*/);
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.match(/https:\/\/collector.liveintent.com\/j\?.*aid=a-0001.*&wpn=prebid.*/);
   });
 
-  it('should fire an event with the provided distributorId', function (done) {
-    liveIntentIdSubmodule.decode({}, { params: { fireEventDelay: 1, distributorId: 'did-1111' } });
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*did=did-1111.*&wpn=prebid.*/);
-      done();
-    }, 200);
-  });
-
-  it('should fire an event without the provided distributorId when appId is provided', function (done) {
-    liveIntentIdSubmodule.decode({}, { params: { fireEventDelay: 1, distributorId: 'did-1111', liCollectConfig: { appId: 'a-0001' } } });
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*aid=a-0001.*&wpn=prebid.*/);
-      expect(server.requests[0].url).to.not.match(/.*did=*/);
-      done();
-    }, 200);
-  });
-
-  it('should initialize LiveConnect and emit an event with a privacy string when decode', function(done) {
+  it('should initialize LiveConnect and emit an event with a privacy string when decode', function() {
     uspConsentDataStub.returns('1YNY');
     gdprConsentDataStub.returns({
       gdprApplies: false,
       consentString: 'consentDataString'
     })
     liveIntentIdSubmodule.decode({}, defaultConfigParams);
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/.*us_privacy=1YNY.*&gdpr=0&gdpr_consent=consentDataString.*/);
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.match(/.*us_privacy=1YNY.*&gdpr=0&gdpr_consent=consentDataString.*/);
   });
 
-  it('should fire an event when decode and a hash is provided', function(done) {
+  it('should fire an event when decode and a hash is provided', function() {
     liveIntentIdSubmodule.decode({}, { params: {
       ...defaultConfigParams.params,
       emailHash: '58131bc547fb87af94cebdaf3102321f'
     }});
-    setTimeout(() => {
-      expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*e=58131bc547fb87af94cebdaf3102321f.+/);
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.match(/https:\/\/rp.liadm.com\/j\?.*e=58131bc547fb87af94cebdaf3102321f.+/);
   });
 
   it('should not return a decoded identifier when the unifiedId is not present in the value', function() {
     const result = liveIntentIdSubmodule.decode({ additionalData: 'data' });
-    expect(result).to.be.eql({});
+    expect(result).to.be.undefined;
   });
 
-  it('should fire an event when decode', function(done) {
+  it('should fire an event when decode', function() {
     liveIntentIdSubmodule.decode({}, defaultConfigParams);
-    setTimeout(() => {
-      expect(server.requests[0].url).to.be.not.null
-      done();
-    }, 200);
+    expect(server.requests[0].url).to.be.not.null
   });
 
-  it('should initialize LiveConnect and send data only once', function(done) {
+  it('should initialize LiveConnect and send data only once', function() {
     liveIntentIdSubmodule.getId(defaultConfigParams);
     liveIntentIdSubmodule.decode({}, defaultConfigParams);
     liveIntentIdSubmodule.getId(defaultConfigParams);
     liveIntentIdSubmodule.decode({}, defaultConfigParams);
-    setTimeout(() => {
-      expect(server.requests.length).to.be.eq(1);
-      done();
-    }, 200);
+    expect(server.requests.length).to.be.eq(1);
   });
 
-  it('should call the custom URL of the LiveIntent Identity Exchange endpoint', function() {
+  it('should call the Custom URL of the LiveIntent Identity Exchange endpoint', function() {
     getCookieStub.returns(null);
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId({ params: {...defaultConfigParams.params, ...{'url': 'https://dummy.liveintent.com/idex'}} }).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://dummy.liveintent.com/idex/prebid/89899?resolve=nonId');
-    request.respond(
-      204,
-      responseHeader
-    );
-    expect(callBackSpy.calledOnceWith({})).to.be.true;
-  });
-
-  it('should call the Identity Exchange endpoint with the privided distributorId', function() {
-    getCookieStub.returns(null);
-    let callBackSpy = sinon.spy();
-    let submoduleCallback = liveIntentIdSubmodule.getId({ params: { fireEventDelay: 1, distributorId: 'did-1111' } }).callback;
-    submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://idx.liadm.com/idex/did-1111/any?did=did-1111&resolve=nonId');
-    request.respond(
-      204,
-      responseHeader
-    );
-    expect(callBackSpy.calledOnceWith({})).to.be.true;
-  });
-
-  it('should call the Identity Exchange endpoint without the privided distributorId when appId is provided', function() {
-    getCookieStub.returns(null);
-    let callBackSpy = sinon.spy();
-    let submoduleCallback = liveIntentIdSubmodule.getId({ params: { fireEventDelay: 1, distributorId: 'did-1111', liCollectConfig: { appId: 'a-0001' } } }).callback;
-    submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/any?resolve=nonId');
+    let request = server.requests[1];
+    expect(request.url).to.be.eq('https://dummy.liveintent.com/idex/prebid/89899');
     request.respond(
       204,
       responseHeader
@@ -218,8 +152,8 @@ describe('LiveIntentId', function() {
       }
     } }).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://dummy.liveintent.com/idex/rubicon/89899?resolve=nonId');
+    let request = server.requests[1];
+    expect(request.url).to.be.eq('https://dummy.liveintent.com/idex/rubicon/89899');
     request.respond(
       200,
       responseHeader,
@@ -233,8 +167,8 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(defaultConfigParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899?resolve=nonId');
+    let request = server.requests[1];
+    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899');
     request.respond(
       200,
       responseHeader,
@@ -248,8 +182,8 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(defaultConfigParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899?resolve=nonId');
+    let request = server.requests[1];
+    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899');
     request.respond(
       503,
       responseHeader,
@@ -265,8 +199,8 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(defaultConfigParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?duid=${oldCookie}&resolve=nonId`);
+    let request = server.requests[1];
+    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?duid=${oldCookie}`);
     request.respond(
       200,
       responseHeader,
@@ -288,8 +222,8 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(configParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?duid=${oldCookie}&_thirdPC=third-pc&resolve=nonId`);
+    let request = server.requests[1];
+    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?duid=${oldCookie}&_thirdPC=third-pc`);
     request.respond(
       200,
       responseHeader,
@@ -310,8 +244,8 @@ describe('LiveIntentId', function() {
     let callBackSpy = sinon.spy();
     let submoduleCallback = liveIntentIdSubmodule.getId(configParams).callback;
     submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899?_thirdPC=%7B%22key%22%3A%22value%22%7D&resolve=nonId');
+    let request = server.requests[1];
+    expect(request.url).to.be.eq('https://idx.liadm.com/idex/prebid/89899?_thirdPC=%7B%22key%22%3A%22value%22%7D');
     request.respond(
       200,
       responseHeader,
@@ -324,69 +258,5 @@ describe('LiveIntentId', function() {
     getCookieStub.throws('CookieError', 'A message');
     liveIntentIdSubmodule.getId(defaultConfigParams);
     expect(imgStub.getCall(0).args[0]).to.match(/.*ae=.+/);
-  });
-
-  it('should decode a unifiedId to lipbId and remove it', function() {
-    const result = liveIntentIdSubmodule.decode({ unifiedId: 'data' });
-    expect(result).to.eql({'lipb': {'lipbid': 'data'}});
-  });
-
-  it('should decode a nonId to lipbId', function() {
-    const result = liveIntentIdSubmodule.decode({ nonId: 'data' });
-    expect(result).to.eql({'lipb': {'lipbid': 'data', 'nonId': 'data'}});
-  });
-
-  it('should resolve extra attributes', function() {
-    let callBackSpy = sinon.spy();
-    let submoduleCallback = liveIntentIdSubmodule.getId({ params: {
-      ...defaultConfigParams.params,
-      ...{ requestedAttributesOverrides: { 'foo': true, 'bar': false } }
-    } }).callback;
-    submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?resolve=nonId&resolve=foo`);
-    request.respond(
-      200,
-      responseHeader,
-      JSON.stringify({})
-    );
-    expect(callBackSpy.calledOnce).to.be.true;
-  });
-
-  it('should decode a uid2 to a seperate object when present', function() {
-    const result = liveIntentIdSubmodule.decode({ nonId: 'foo', uid2: 'bar' });
-    expect(result).to.eql({'lipb': {'lipbid': 'foo', 'nonId': 'foo', 'uid2': 'bar'}, 'uid2': {'id': 'bar'}});
-  });
-
-  it('should decode a bidswitch id to a seperate object when present', function() {
-    const result = liveIntentIdSubmodule.decode({ nonId: 'foo', bidswitch: 'bar' });
-    expect(result).to.eql({'lipb': {'lipbid': 'foo', 'nonId': 'foo', 'bidswitch': 'bar'}, 'bidswitch': {'id': 'bar'}});
-  });
-
-  it('should decode a medianet id to a seperate object when present', function() {
-    const result = liveIntentIdSubmodule.decode({ nonId: 'foo', medianet: 'bar' });
-    expect(result).to.eql({'lipb': {'lipbid': 'foo', 'nonId': 'foo', 'medianet': 'bar'}, 'medianet': {'id': 'bar'}});
-  });
-
-  it('should decode values with uid2 but no nonId', function() {
-    const result = liveIntentIdSubmodule.decode({ uid2: 'bar' });
-    expect(result).to.eql({'uid2': {'id': 'bar'}});
-  });
-
-  it('should allow disabling nonId resolution', function() {
-    let callBackSpy = sinon.spy();
-    let submoduleCallback = liveIntentIdSubmodule.getId({ params: {
-      ...defaultConfigParams.params,
-      ...{ requestedAttributesOverrides: { 'nonId': false, 'uid2': true } }
-    } }).callback;
-    submoduleCallback(callBackSpy);
-    let request = server.requests[0];
-    expect(request.url).to.be.eq(`https://idx.liadm.com/idex/prebid/89899?resolve=uid2`);
-    request.respond(
-      200,
-      responseHeader,
-      JSON.stringify({})
-    );
-    expect(callBackSpy.calledOnce).to.be.true;
   });
 });

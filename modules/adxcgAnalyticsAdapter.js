@@ -1,9 +1,8 @@
 import { parseSizesInput, uniques, buildUrl, logError } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import adapterManager from '../src/adapterManager.js';
 import CONSTANTS from '../src/constants.json';
-import {getGlobal} from '../src/prebidGlobal.js';
 
 /**
  * Analytics adapter from adxcg.com
@@ -123,7 +122,7 @@ function send (data) {
       ats: adxcgAnalyticsAdapter.context.auctionTimestamp,
       aav: adxcgAnalyticsVersion,
       iob: intersectionObserverAvailable(window) ? '1' : '0',
-      pbv: getGlobal().version,
+      pbv: $$PREBID_GLOBAL$$.version,
       sz: window.screen.width + 'x' + window.screen.height
     }
   });

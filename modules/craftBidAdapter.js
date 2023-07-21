@@ -1,6 +1,7 @@
 import {
   convertCamelToUnderscore,
   convertTypes,
+  deepAccess,
   getBidRequest,
   isArray,
   isEmpty,
@@ -13,8 +14,6 @@ import {auctionManager} from '../src/auctionManager.js';
 import {find, includes} from '../src/polyfill.js';
 import {getStorageManager} from '../src/storageManager.js';
 import {ajax} from '../src/ajax.js';
-import {hasPurpose1Consent} from '../src/utils/gpdr.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'craft';
 const URL_BASE = 'https://gacraft.jp/prebid-v3';
@@ -31,11 +30,8 @@ export const spec = {
   },
 
   buildRequests: function(bidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    bidRequests = convertOrtbRequestToProprietaryNative(bidRequests);
-    const bidRequest = bidRequests[0];
     const tags = bidRequests.map(bidToTag);
-    const schain = bidRequest.schain;
+    const schain = bidRequests[0].schain;
     const payload = {
       tags: [...tags],
       ua: navigator.userAgent,
@@ -44,31 +40,25 @@ export const spec = {
       },
       schain: schain
     };
-    if (bidderRequest) {
-      if (bidderRequest.gdprConsent) {
-        payload.gdpr_consent = {
-          consent_string: bidderRequest.gdprConsent.consentString,
-          consent_required: bidderRequest.gdprConsent.gdprApplies
-        };
+    if (bidderRequest && bidderRequest.gdprConsent) {
+      payload.gdpr_consent = {
+        consent_string: bidderRequest.gdprConsent.consentString,
+        consent_required: bidderRequest.gdprConsent.gdprApplies
+      };
+    }
+    if (bidderRequest && bidderRequest.uspConsent) {
+      payload.us_privacy = bidderRequest.uspConsent;
+    }
+    if (bidderRequest && bidderRequest.refererInfo) {
+      let refererinfo = {
+        rd_ref: bidderRequest.refererInfo.referer,
+        rd_top: bidderRequest.refererInfo.reachedTop,
+        rd_ifs: bidderRequest.refererInfo.numIframes,
+      };
+      if (bidderRequest.refererInfo.stack) {
+        refererinfo.rd_stk = bidderRequest.refererInfo.stack.join(',');
       }
-      if (bidderRequest.uspConsent) {
-        payload.us_privacy = bidderRequest.uspConsent;
-      }
-      if (bidderRequest.refererInfo) {
-        let refererinfo = {
-          // TODO: this collects everything it finds, except for the canonical URL
-          rd_ref: bidderRequest.refererInfo.topmostLocation,
-          rd_top: bidderRequest.refererInfo.reachedTop,
-          rd_ifs: bidderRequest.refererInfo.numIframes,
-        };
-        if (bidderRequest.refererInfo.stack) {
-          refererinfo.rd_stk = bidderRequest.refererInfo.stack.join(',');
-        }
-        payload.referrer_detection = refererinfo;
-      }
-      if (bidRequest.userId) {
-        payload.userId = bidRequest.userId
-      }
+      payload.referrer_detection = refererinfo;
     }
     const request = formatRequest(payload, bidderRequest);
     return request;
@@ -111,7 +101,7 @@ export const spec = {
     params = convertTypes({
       'sitekey': 'string',
       'placementId': 'string',
-      'keywords': transformBidderParamKeywords,
+      'keywords': transformBidderParamKeywords
     }, params);
     if (isOpenRtb) {
       if (isPopulatedArray(params.keywords)) {
@@ -146,18 +136,28 @@ function deleteValues(keyPairObj) {
   }
 }
 
+function hasPurpose1Consent(bidderRequest) {
+  let result = true;
+  if (bidderRequest && bidderRequest.gdprConsent) {
+    if (bidderRequest.gdprConsent.gdprApplies && bidderRequest.gdprConsent.apiVersion === 2) {
+      result = !!(deepAccess(bidderRequest.gdprConsent, 'vendorData.purpose.consents.1') === true);
+    }
+  }
+  return result;
+}
+
 function formatRequest(payload, bidderRequest) {
   let options = {};
-  if (!hasPurpose1Consent(bidderRequest?.gdprConsent)) {
+  if (!hasPurpose1Consent(bidderRequest)) {
     options = {
       withCredentials: false
     };
   }
-  const baseUrl = payload.tags[0].url || URL_BASE;
+
   const payloadString = JSON.stringify(payload);
   return {
     method: 'POST',
-    url: `${baseUrl}/${payload.tags[0].sitekey}`,
+    url: `${URL_BASE}/${payload.tags[0].sitekey}`,
     data: payloadString,
     bidderRequest,
     options

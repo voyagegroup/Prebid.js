@@ -7,15 +7,10 @@ import { logMessage, parseUrl, buildUrl, triggerPixel, generateUUID, isArray } f
 import { config } from '../src/config.js';
 import * as events from '../src/events.js';
 import CONSTANTS from '../src/constants.json';
-import {getStorageManager} from '../src/storageManager.js';
-import {timedAuctionHook} from '../src/utils/perfMetrics.js';
-import {GDPR_GVLIDS, VENDORLESS_GVLID} from '../src/consentHandler.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
-import {getGlobal} from '../src/prebidGlobal.js';
+import { getStorageManager } from '../src/storageManager.js';
 
-const storage = getStorageManager({moduleType: MODULE_TYPE_UID, moduleName: 'pubCommonId'});
-// register our GVL ID directly, since this is not a "real" user ID module we don't have a spec where to declare it
-GDPR_GVLIDS.register(MODULE_TYPE_UID, 'pubCommonId', VENDORLESS_GVLID);
+const MODULE_TYPE = 'fpid-module';
+const storage = getStorageManager({moduleType: MODULE_TYPE});
 
 const ID_NAME = '_pubcid';
 const OPTOUT_NAME = '_pubcid_optout';
@@ -171,8 +166,8 @@ export function getPubcidConfig() { return pubcidConfig; }
  * @param {function} next The next function in the chain
  */
 
-export const requestBidHook = timedAuctionHook('pubCommonId', function requestBidHook(next, config) {
-  let adUnits = config.adUnits || getGlobal().adUnits;
+export function requestBidHook(next, config) {
+  let adUnits = config.adUnits || $$PREBID_GLOBAL$$.adUnits;
   let pubcid = null;
 
   // Pass control to the next function if not enabled
@@ -227,7 +222,7 @@ export const requestBidHook = timedAuctionHook('pubCommonId', function requestBi
   }
 
   return next.call(this, config);
-});
+}
 
 // Helper to set a cookie
 export function setCookie(name, value, expires, sameSite) {
@@ -296,7 +291,7 @@ export function initPubcid() {
     (storage.hasLocalStorage() && readValue(OPTOUT_NAME, LOCAL_STORAGE));
 
   if (!optout) {
-    getGlobal().requestBids.before(requestBidHook);
+    $$PREBID_GLOBAL$$.requestBids.before(requestBidHook);
   }
 }
 

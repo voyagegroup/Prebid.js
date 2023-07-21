@@ -45,11 +45,13 @@ export const spec = {
 
     const bidRequests = [];
     const tz = new Date().getTimezoneOffset()
-    // TODO: are these the right referer values?
-    const referrer = bidderRequest?.refererInfo?.page || '';
-    const topOrigin = bidderRequest?.refererInfo?.domain || '';
+    const referrer = bidderRequest && bidderRequest.refererInfo ? bidderRequest.refererInfo.referer : '';
 
     _each(validBidRequests, (bid) => {
+      let topOrigin = ''
+      try {
+        if (isStr(referrer)) topOrigin = new URL(referrer).host
+      } catch (e) { /* do nothing */ }
       const domain = isStr(bid.params.domain) ? bid.params.domain : topOrigin
       const cur = getValue(bid.params, 'currency') || DEFAULT_CURRENCY
       const bidid = getBidIdParameter('bidId', bid)

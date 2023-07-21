@@ -4,11 +4,9 @@ import {BANNER} from '../src/mediaTypes.js';
 
 const ENDPOINT = 'https://prebid.mes.glomex.cloud/request-bid'
 const BIDDER_CODE = 'glomex'
-const GVLID = 967
 
 export const spec = {
   code: BIDDER_CODE,
-  gvlid: GVLID,
   supportedMediaTypes: [BANNER],
 
   isBidRequestValid: function (bid) {
@@ -28,11 +26,10 @@ export const spec = {
       data: {
         auctionId: bidderRequest.auctionId,
         refererInfo: {
-          // TODO: this collects everything it finds, except for canonicalUrl
           isAmp: refererInfo.isAmp,
           numIframes: refererInfo.numIframes,
           reachedTop: refererInfo.reachedTop,
-          referer: refererInfo.topmostLocation,
+          referer: refererInfo.referer
         },
         gdprConsent: {
           consentString: gdprConsent.consentString,

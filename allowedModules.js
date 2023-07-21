@@ -15,8 +15,5 @@ module.exports = {
     'just-clone',
     'dlv',
     'dset'
-  ],
-  'libraries': [
-    ...sharedWhiteList // empty for now, but keep it to enable linting
   ]
 };

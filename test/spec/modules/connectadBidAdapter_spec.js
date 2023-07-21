@@ -46,17 +46,9 @@ describe('ConnectAd Adapter', function () {
       auctionId: 'e76cbb58-f3e1-4ad9-9f4c-718c1919d0df',
       bidderRequestId: '1c56ad30b9b8ca8',
       transactionId: 'e76cbb58-f3e1-4ad9-9f4c-718c1919d0df',
-      userIdAsEids: [
-        {
-          'source': 'pubcid.org',
-          'uids': [
-            {
-              'atype': 1,
-              'id': '123456'
-            }
-          ]
-        }
-      ]
+      userId: {
+        tdid: '123456'
+      }
     }];
 
     bidderRequest = {
@@ -263,17 +255,14 @@ describe('ConnectAd Adapter', function () {
         const bidRequest = Object.assign({}, bidRequests[0])
         const bidderRequ = {
           refererInfo: {
-            page: 'https://connectad.io/page.html',
-            legacy: {
-              referer: 'https://connectad.io/page.html',
-              reachedTop: true,
-              numIframes: 2,
-              stack: [
-                'https://connectad.io/page.html',
-                'https://connectad.io/iframe1.html',
-                'https://connectad.io/iframe2.html'
-              ]
-            }
+            referer: 'https://connectad.io/page.html',
+            reachedTop: true,
+            numIframes: 2,
+            stack: [
+              'https://connectad.io/page.html',
+              'https://connectad.io/iframe1.html',
+              'https://connectad.io/iframe2.html'
+            ]
           }
         }
         const request = spec.buildRequests([bidRequest], bidderRequ);

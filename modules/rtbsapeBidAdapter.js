@@ -43,8 +43,7 @@ export const spec = {
         requestId: bidderRequest.bidderRequestId,
         bids: validBidRequests,
         timezone: (tz > 0 ? '-' : '+') + padInt(Math.floor(Math.abs(tz) / 60)) + ':' + padInt(Math.abs(tz) % 60),
-        // TODO: please do not send internal data structures over the network
-        refererInfo: bidderRequest.refererInfo.legacy
+        refererInfo: bidderRequest.refererInfo
       },
     }
   },

@@ -144,7 +144,7 @@ describe('AdkernelAdn adapter', function () {
     auctionStart: 1545836987704,
     timeout: 3000,
     refererInfo: {
-      page: 'https://example.com/index.html',
+      referer: 'https://example.com/index.html',
       reachedTop: true,
       numIframes: 0,
       stack: ['https://example.com/index.html']

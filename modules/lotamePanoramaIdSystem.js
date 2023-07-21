@@ -16,9 +16,8 @@ import {
 } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { submodule } from '../src/hook.js';
-import {getStorageManager} from '../src/storageManager.js';
+import { getStorageManager } from '../src/storageManager.js';
 import { uspDataHandler } from '../src/adapterManager.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
 
 const KEY_ID = 'panoramaId';
 const KEY_EXPIRY = `${KEY_ID}_expiry`;
@@ -29,10 +28,8 @@ const DAYS_TO_CACHE = 7;
 const DAY_MS = 60 * 60 * 24 * 1000;
 const MISSING_CORE_CONSENT = 111;
 const GVLID = 95;
-const ID_HOST = 'id.crwdcntrl.net';
-const ID_HOST_COOKIELESS = 'c.ltmsphrcl.net';
 
-export const storage = getStorageManager({moduleType: MODULE_TYPE_UID, moduleName: MODULE_NAME});
+export const storage = getStorageManager({gvlid: GVLID, moduleName: MODULE_NAME});
 let cookieDomain;
 
 /**
@@ -60,14 +57,12 @@ function setProfileId(profileId) {
  * Get the Lotame profile id by checking cookies first and then local storage
  */
 function getProfileId() {
-  let profileId;
   if (storage.cookiesAreEnabled()) {
-    profileId = storage.getCookie(KEY_PROFILE, undefined);
+    return storage.getCookie(KEY_PROFILE, undefined);
   }
-  if (!profileId && storage.hasLocalStorage()) {
-    profileId = storage.getDataFromLocalStorage(KEY_PROFILE, undefined);
+  if (storage.hasLocalStorage()) {
+    return storage.getDataFromLocalStorage(KEY_PROFILE, undefined);
   }
-  return profileId;
 }
 
 /**
@@ -83,11 +78,10 @@ function getFromStorage(key) {
     const storedValueExp = storage.getDataFromLocalStorage(
       `${key}_exp`, undefined
     );
-
-    if (storedValueExp === '' || storedValueExp === null) {
+    if (storedValueExp === '') {
       value = storage.getDataFromLocalStorage(key, undefined);
     } else if (storedValueExp) {
-      if ((new Date(parseInt(storedValueExp, 10))).getTime() - Date.now() > 0) {
+      if ((new Date(storedValueExp)).getTime() - Date.now() > 0) {
         value = storage.getDataFromLocalStorage(key, undefined);
       }
     }
@@ -254,13 +248,6 @@ export const lotamePanoramaIdSubmodule = {
       usPrivacy = getFromStorage('us_privacy');
     }
 
-    const getRequestHost = function() {
-      if (navigator.userAgent && navigator.userAgent.indexOf('Safari') != -1 && navigator.userAgent.indexOf('Chrome') == -1) {
-        return ID_HOST_COOKIELESS;
-      }
-      return ID_HOST;
-    }
-
     const resolveIdFunction = function (callback) {
       let queryParams = {};
       if (storedUserId) {
@@ -297,7 +284,7 @@ export const lotamePanoramaIdSubmodule = {
 
       const url = buildUrl({
         protocol: 'https',
-        host: getRequestHost(),
+        host: `id.crwdcntrl.net`,
         pathname: '/id',
         search: isEmpty(queryParams) ? undefined : queryParams,
       });

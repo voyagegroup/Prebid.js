@@ -14,9 +14,7 @@ describe('invibesBidAdapter:', function () {
       bidder: BIDDER_CODE,
       bidderRequestId: 'r1',
       params: {
-        placementId: PLACEMENT_ID,
-        disableUserSyncs: false
-
+        placementId: PLACEMENT_ID
       },
       adUnitCode: 'test-div1',
       auctionId: 'a1',
@@ -31,8 +29,7 @@ describe('invibesBidAdapter:', function () {
       bidder: BIDDER_CODE,
       bidderRequestId: 'r2',
       params: {
-        placementId: 'abcde',
-        disableUserSyncs: false
+        placementId: 'abcde'
       },
       adUnitCode: 'test-div2',
       auctionId: 'a2',
@@ -110,11 +107,6 @@ describe('invibesBidAdapter:', function () {
 
   beforeEach(function () {
     resetInvibes();
-    $$PREBID_GLOBAL$$.bidderSettings = {
-      invibes: {
-        storageAllowed: true
-      }
-    };
     document.cookie = '';
     this.cStub1 = sinon.stub(console, 'info');
   });
@@ -173,16 +165,6 @@ describe('invibesBidAdapter:', function () {
   });
 
   describe('buildRequests', function () {
-    it('sends preventPageViewEvent as false on first call', function () {
-      let request = spec.buildRequests(bidRequests);
-      expect(request.data.preventPageViewEvent).to.be.false;
-    });
-
-    it('sends preventPageViewEvent as true on 2nd call', function () {
-      let request = spec.buildRequests(bidRequests);
-      expect(request.data.preventPageViewEvent).to.be.true;
-    });
-
     it('sends bid request to ENDPOINT via GET', function () {
       const request = spec.buildRequests(bidRequests);
       expect(request.url).to.equal(ENDPOINT);
@@ -1213,15 +1195,7 @@ describe('invibesBidAdapter:', function () {
   });
 
   describe('getUserSyncs', function () {
-    it('returns undefined if disableUserSyncs not passed as bid request param ', function () {
-      spec.buildRequests(bidRequestsWithUserId);
-      let response = spec.getUserSyncs({iframeEnabled: true});
-      expect(response).to.equal(undefined);
-    });
-
     it('returns an iframe if enabled', function () {
-      spec.buildRequests(bidRequests);
-
       let response = spec.getUserSyncs({iframeEnabled: true});
       expect(response.type).to.equal('iframe');
       expect(response.url).to.include(SYNC_ENDPOINT);
@@ -1229,8 +1203,6 @@ describe('invibesBidAdapter:', function () {
 
     it('returns an iframe with params if enabled', function () {
       top.window.invibes.optIn = 1;
-      spec.buildRequests(bidRequests);
-
       let response = spec.getUserSyncs({iframeEnabled: true});
       expect(response.type).to.equal('iframe');
       expect(response.url).to.include(SYNC_ENDPOINT);
@@ -1239,8 +1211,6 @@ describe('invibesBidAdapter:', function () {
 
     it('returns an iframe with params including if enabled', function () {
       top.window.invibes.optIn = 1;
-      spec.buildRequests(bidRequests);
-
       global.document.cookie = 'ivbsdid={"id":"dvdjkams6nkq","cr":' + Date.now() + ',"hc":0}';
       SetBidderAccess();
 
@@ -1252,9 +1222,7 @@ describe('invibesBidAdapter:', function () {
     });
 
     it('returns an iframe with params including if enabled read from LocalStorage', function () {
-      spec.buildRequests(bidRequests);
       top.window.invibes.optIn = 1;
-
       localStorage.ivbsdid = 'dvdjkams6nkq';
       SetBidderAccess();
 
@@ -1266,8 +1234,6 @@ describe('invibesBidAdapter:', function () {
     });
 
     it('returns undefined if iframe not enabled ', function () {
-      spec.buildRequests(bidRequests);
-
       let response = spec.getUserSyncs({iframeEnabled: false});
       expect(response).to.equal(undefined);
     });

@@ -1,4 +1,4 @@
-import { amxIdSubmodule, storage } from 'modules/amxIdSystem.js';
+import { amxIdSubmodule } from 'modules/amxIdSystem.js';
 import { server } from 'test/mocks/xhr.js';
 import * as utils from 'src/utils.js';
 
@@ -48,17 +48,38 @@ describe('validateConfig', () => {
     logErrorSpy.restore();
   });
 
-  it('should allow configuration with no storage', () => {
+  it('should return undefined if config.storage is not present', () => {
     expect(
       amxIdSubmodule.getId(
         {
           ...config,
-          storage: undefined
+          storage: null,
         },
         null,
         null
       )
-    ).to.not.equal(undefined);
+    ).to.equal(undefined);
+
+    expect(logErrorSpy.calledOnce).to.be.true;
+    expect(logErrorSpy.lastCall.lastArg).to.contain('storage is required');
+  });
+
+  it('should return undefined if config.storage.type !== "html5"', () => {
+    expect(
+      amxIdSubmodule.getId(
+        {
+          ...config,
+          storage: {
+            type: 'cookie',
+          },
+        },
+        null,
+        null
+      )
+    ).to.equal(undefined);
+
+    expect(logErrorSpy.calledOnce).to.be.true;
+    expect(logErrorSpy.lastCall.lastArg).to.contain('cookie');
   });
 
   it('should return undefined if expires > 30', () => {
@@ -90,18 +111,10 @@ describe('getId', () => {
   });
 
   it('should call the sync endpoint and accept a valid response', () => {
-    storage.setDataInLocalStorage('__amuidpb', TEST_ID);
-
     const { callback } = amxIdSubmodule.getId(config, null, null);
     callback(spy);
 
     const [request] = server.requests;
-    expect(request.withCredentials).to.be.true
-    expect(request.requestHeaders['Content-Type']).to.match(/text\/plain/)
-
-    const { search } = utils.parseUrl(request.url);
-    expect(search.av).to.equal(amxIdSubmodule.version);
-    expect(search.am).to.equal(TEST_ID);
     expect(request.method).to.equal('GET');
 
     request.respond(
@@ -174,7 +187,7 @@ describe('getId', () => {
     );
 
     const [, secondRequest] = server.requests;
-    expect(secondRequest.url).to.match(new RegExp(`^${intermediateValue}\?`));
+    expect(secondRequest.url).to.be.equal(intermediateValue);
     secondRequest.respond(
       200,
       {},

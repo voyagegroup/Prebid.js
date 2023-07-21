@@ -1,6 +1,7 @@
-import {deepAccess} from '../src/utils.js';
+import { deepAccess } from '../src/utils.js';
+import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {BANNER, VIDEO} from '../src/mediaTypes.js';
+import { BANNER, VIDEO } from '../src/mediaTypes.js';
 
 const BIDDER_CODE = 'rads';
 const ENDPOINT_URL = 'https://rads.recognified.net/md.request.php';
@@ -22,7 +23,7 @@ export const spec = {
       const placementId = params.placement;
 
       const rnd = Math.floor(Math.random() * 99999999999);
-      const referrer = encodeURIComponent(bidderRequest.refererInfo.page);
+      const referrer = encodeURIComponent(bidderRequest.refererInfo.referer);
       const bidId = bidRequest.bidId;
       const isDev = params.devMode || false;
 
@@ -64,7 +65,7 @@ export const spec = {
         method: 'GET',
         url: endpoint,
         data: objectToQueryString(payload),
-      };
+      }
     });
   },
   interpretResponse: function(serverResponse, bidRequest) {
@@ -85,7 +86,7 @@ export const spec = {
         dealId: dealId,
         currency: currency,
         netRevenue: netRevenue,
-        ttl: 60,
+        ttl: config.getConfig('_bidderTimeout'),
         meta: {
           advertiserDomains: response.adomain || []
         }
@@ -183,7 +184,7 @@ function prepareExtraParams(params, payload, bidderRequest, bidRequest) {
   }
 
   if (params.bcat !== undefined) {
-    payload.bcat = deepAccess(bidderRequest.ortb2Imp, 'bcat') || params.bcat;
+    payload.bcat = params.bcat;
   }
   if (params.dvt !== undefined) {
     payload.dvt = params.dvt;

@@ -53,7 +53,7 @@ describe('Fabrick ID System', function() {
     }
     let configParams = Object.assign({}, defaultConfigParams, {
       refererInfo: {
-        topmostLocation: r,
+        referer: r,
         stack: ['s-0'],
         canonicalUrl: 'cu-0'
       }
@@ -81,7 +81,7 @@ describe('Fabrick ID System', function() {
   it('should complete successfully', function() {
     let configParams = Object.assign({}, defaultConfigParams, {
       refererInfo: {
-        topmostLocation: 'r-0',
+        referer: 'r-0',
         stack: ['s-0'],
         canonicalUrl: 'cu-0'
       }

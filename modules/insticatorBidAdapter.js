@@ -12,7 +12,7 @@ const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
 
-export const storage = getStorageManager({bidderCode: BIDDER_CODE});
+export const storage = getStorageManager({gvlid: GVLID, bidderCode: BIDDER_CODE});
 
 config.setDefaults({
   insticator: {
@@ -25,7 +25,7 @@ function getUserId() {
   let uid;
 
   if (storage.localStorageIsEnabled()) {
-    uid = storage.getDataFromLocalStorage(USER_ID_KEY);
+    uid = localStorage.getItem(USER_ID_KEY);
   } else {
     uid = storage.getCookie(USER_ID_KEY);
   }
@@ -39,11 +39,11 @@ function getUserId() {
 
 function setUserId(userId) {
   if (storage.localStorageIsEnabled()) {
-    storage.setDataInLocalStorage(USER_ID_KEY, userId);
+    localStorage.setItem(USER_ID_KEY, userId);
   }
 
   if (storage.cookiesAreEnabled()) {
-    const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toISOString();
     storage.setCookie(USER_ID_KEY, userId, expires);
   }
 }
@@ -71,10 +71,8 @@ function buildVideo(bidRequest) {
   const w = deepAccess(bidRequest, 'mediaTypes.video.w');
   const h = deepAccess(bidRequest, 'mediaTypes.video.h');
   const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
-  const placement = deepAccess(bidRequest, 'mediaTypes.video.placement') || 3;
 
   return {
-    placement,
     mimes,
     w,
     h,
@@ -179,10 +177,9 @@ function buildRequest(validBidRequests, bidderRequest) {
       tid: bidderRequest.auctionId,
     },
     site: {
-      // TODO: are these the right refererInfo values?
-      domain: bidderRequest.refererInfo.domain,
-      page: bidderRequest.refererInfo.page,
-      ref: bidderRequest.refererInfo.ref,
+      domain: location.hostname,
+      page: location.href,
+      ref: bidderRequest.refererInfo.referer,
     },
     device: buildDevice(),
     regs: buildRegs(bidderRequest),
@@ -329,13 +326,6 @@ function validateVideo(bid) {
 
   if (!Array.isArray(mimes) || mimes.length === 0) {
     logError('insticator: mimes not specified');
-    return false;
-  }
-
-  const placement = deepAccess(bid, 'mediaTypes.video.placement');
-
-  if (typeof placement !== 'undefined' && typeof placement !== 'number') {
-    logError('insticator: video placement is not a number');
     return false;
   }
 

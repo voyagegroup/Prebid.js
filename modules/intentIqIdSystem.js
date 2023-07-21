@@ -8,8 +8,7 @@
 import { logError, logInfo } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { submodule } from '../src/hook.js'
-import {getStorageManager} from '../src/storageManager.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
+import { getStorageManager } from '../src/storageManager.js';
 
 const PCID_EXPIRY = 365;
 
@@ -17,7 +16,7 @@ const MODULE_NAME = 'intentIqId';
 export const FIRST_PARTY_KEY = '_iiq_fdata';
 export var FIRST_PARTY_DATA_KEY = '_iiq_fdata';
 
-export const storage = getStorageManager({ moduleType: MODULE_TYPE_UID, moduleName: MODULE_NAME });
+export const storage = getStorageManager({ gvlid: undefined, moduleName: MODULE_NAME });
 
 const INVALID_ID = 'INVALID_ID';
 
@@ -119,7 +118,7 @@ export const intentIqIdSubmodule = {
       logError('User ID - intentIqId submodule requires a valid partner to be defined');
       return;
     }
-    if (!FIRST_PARTY_DATA_KEY.includes(configParams.partner)) { FIRST_PARTY_DATA_KEY += '_' + configParams.partner; }
+    if (!FIRST_PARTY_DATA_KEY.includes(configParams.partner)) { FIRST_PARTY_DATA_KEY += '_' + configParams.partner }
     let rrttStrtTime = 0;
 
     // Read Intent IQ 1st party id or generate it if none exists
@@ -170,7 +169,7 @@ export const intentIqIdSubmodule = {
               shouldUpdateLs = true;
             }
             if (shouldUpdateLs === true) {
-              partnerData.date = Date.now();
+              partnerData.date = Date.now()
               storeData(FIRST_PARTY_KEY, JSON.stringify(firstPartyData));
               storeData(FIRST_PARTY_DATA_KEY, JSON.stringify(partnerData));
             }

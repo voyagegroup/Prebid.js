@@ -8,21 +8,17 @@
 import {ajax} from '../src/ajax.js';
 import {getStorageManager} from '../src/storageManager.js';
 import {submodule} from '../src/hook.js';
-import {isFn, isStr, isPlainObject, logError, logInfo} from '../src/utils.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
+import { isFn, isStr, isPlainObject, logError } from '../src/utils.js';
 
-const HADRONID_LOCAL_NAME = 'auHadronId';
 const MODULE_NAME = 'hadronId';
 const AU_GVLID = 561;
-const DEFAULT_HADRON_URL_ENDPOINT = 'https://id.hadron.ad.gt/api/v1/pbhid';
 
-export const storage = getStorageManager({moduleType: MODULE_TYPE_UID, moduleName: 'hadron'});
+export const storage = getStorageManager({gvlid: AU_GVLID, moduleName: 'hadron'});
 
 /**
  * Param or default.
- * @param {String|function} param
+ * @param {String} param
  * @param {String} defaultVal
- * @param arg
  */
 function paramOrDefault(param, defaultVal, arg) {
   if (isFn(param)) {
@@ -33,15 +29,6 @@ function paramOrDefault(param, defaultVal, arg) {
   return defaultVal;
 }
 
-/**
- * @param {string} url
- * @param {string} params
- * @returns {string}
- */
-const urlAddParams = (url, params) => {
-  return url + (url.indexOf('?') > -1 ? '&' : '?') + params
-}
-
 /** @type {Submodule} */
 export const hadronIdSubmodule = {
   /**
@@ -49,19 +36,18 @@ export const hadronIdSubmodule = {
    * @type {string}
    */
   name: MODULE_NAME,
-  gvlid: AU_GVLID,
   /**
    * decode the stored id value for passing to bid requests
    * @function
-   * @param {string} value
-   * @returns {Object}
+   * @param {{value:string}} value
+   * @returns {{hadronId:Object}}
    */
   decode(value) {
-    const hadronId = storage.getDataFromLocalStorage(HADRONID_LOCAL_NAME);
+    let hadronId = storage.getDataFromLocalStorage('auHadronId');
     if (isStr(hadronId)) {
       return {hadronId: hadronId};
     }
-    return (value && typeof value['hadronId'] === 'string') ? {'hadronId': value['hadronId']} : undefined;
+    return (value && typeof value['hadronId'] === 'string') ? { 'hadronId': value['hadronId'] } : undefined;
   },
   /**
    * performs action to obtain id and return a value in the callback's response argument
@@ -73,41 +59,35 @@ export const hadronIdSubmodule = {
     if (!isPlainObject(config.params)) {
       config.params = {};
     }
-    const partnerId = config.params.partnerId | 0;
-    let hadronId = storage.getDataFromLocalStorage(HADRONID_LOCAL_NAME);
-    if (isStr(hadronId)) {
-      return {id: {hadronId}};
-    }
+    const url = paramOrDefault(config.params.url,
+      `https://id.hadron.ad.gt/api/v1/pbhid`,
+      config.params.urlArg);
+
     const resp = function (callback) {
-      let responseObj = {};
-      const callbacks = {
-        success: response => {
-          if (response) {
-            try {
-              responseObj = JSON.parse(response);
-            } catch (error) {
-              logError(error);
+      let hadronId = storage.getDataFromLocalStorage('auHadronId');
+      if (isStr(hadronId)) {
+        const responseObj = {hadronId: hadronId};
+        callback(responseObj);
+      } else {
+        const callbacks = {
+          success: response => {
+            let responseObj;
+            if (response) {
+              try {
+                responseObj = JSON.parse(response);
+              } catch (error) {
+                logError(error);
+              }
             }
-            logInfo(`Response from backend is ${responseObj}`);
-            hadronId = responseObj['hadronId'];
-            storage.setDataInLocalStorage(HADRONID_LOCAL_NAME, hadronId);
-            responseObj = {id: {hadronId}};
+            callback(responseObj);
+          },
+          error: error => {
+            logError(`${MODULE_NAME}: ID fetch encountered an error`, error);
+            callback();
           }
-          callback(responseObj);
-        },
-        error: error => {
-          logError(`${MODULE_NAME}: ID fetch encountered an error`, error);
-          callback();
-        }
-      };
-      logInfo('HadronId not found in storage, calling backend...');
-      const url = urlAddParams(
-        // config.params.url and config.params.urlArg are not documented
-        // since their use is for debugging purposes only
-        paramOrDefault(config.params.url, DEFAULT_HADRON_URL_ENDPOINT, config.params.urlArg),
-        `partner_id=${partnerId}&_it=prebid`
-      );
-      ajax(url, callbacks, undefined, {method: 'GET'});
+        };
+        ajax(url, callbacks, undefined, {method: 'GET'});
+      }
     };
     return {callback: resp};
   }

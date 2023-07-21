@@ -802,7 +802,7 @@ describe('GoldbachXandrAdapter', function () {
       const bidRequest = Object.assign({}, bidRequests[0])
       const bidderRequest = {
         refererInfo: {
-          topmostLocation: 'https://example.com/page.html',
+          referer: 'https://example.com/page.html',
           reachedTop: true,
           numIframes: 2,
           stack: [
@@ -919,7 +919,11 @@ describe('GoldbachXandrAdapter', function () {
           uid2: { id: 'sample-uid2-value' },
           criteoId: 'sample-criteo-userid',
           netId: 'sample-netId-userid',
-          idl_env: 'sample-idl-userid'
+          idl_env: 'sample-idl-userid',
+          flocId: {
+            id: 'sample-flocid-value',
+            version: 'chrome.1.0'
+          }
         }
       });
 
@@ -934,6 +938,11 @@ describe('GoldbachXandrAdapter', function () {
       expect(payload.eids).to.deep.include({
         source: 'criteo.com',
         id: 'sample-criteo-userid',
+      });
+
+      expect(payload.eids).to.deep.include({
+        source: 'chrome.com',
+        id: 'sample-flocid-value'
       });
 
       expect(payload.eids).to.deep.include({

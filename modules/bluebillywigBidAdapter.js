@@ -4,6 +4,7 @@ import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {VIDEO} from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {Renderer} from '../src/Renderer.js';
+import {createEidsArray} from './userId/eids.js';
 
 const DEV_MODE = window.location.search.match(/bbpbs_debug=true/);
 
@@ -51,9 +52,10 @@ const BB_HELPERS = {
     else if (Array.isArray(adServerCur) && adServerCur.length) request.cur = [adServerCur[0]];
   },
   addUserIds: function(request, validBidRequests) {
-    const eids = deepAccess(validBidRequests, '0.userIdAsEids');
+    const bidUserId = deepAccess(validBidRequests, '0.userId');
+    const eids = createEidsArray(bidUserId);
 
-    if (eids != null && eids.length) {
+    if (eids.length) {
       deepSetValue(request, 'user.ext.eids', eids);
     }
   },
@@ -304,7 +306,7 @@ export const spec = {
     if (getConfig('coppa') == true) deepSetValue(request, 'regs.coppa', 1);
 
     // Enrich the request with any external data we may have
-    BB_HELPERS.addSiteAppDevice(request, bidderRequest.refererInfo && bidderRequest.refererInfo.page);
+    BB_HELPERS.addSiteAppDevice(request, bidderRequest.refererInfo && bidderRequest.refererInfo.referer);
     BB_HELPERS.addSchain(request, validBidRequests);
     BB_HELPERS.addCurrency(request);
     BB_HELPERS.addUserIds(request, validBidRequests);

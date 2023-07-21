@@ -1,7 +1,6 @@
 import { config } from '../src/config.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE } from '../src/mediaTypes.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'loglylift';
 const ENDPOINT_URL = 'https://bid.logly.co.jp/prebid/client/v1';
@@ -15,9 +14,6 @@ export const spec = {
   },
 
   buildRequests: function (bidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    bidRequests = convertOrtbRequestToProprietaryNative(bidRequests);
-
     const requests = [];
     for (let i = 0, len = bidRequests.length; i < len; i++) {
       const request = {
@@ -73,8 +69,8 @@ function newBidRequest(bid, bidderRequest) {
     params: bid.params,
     prebidJsVersion: '$prebid.version$',
     url: window.location.href,
-    domain: bidderRequest.refererInfo.domain,
-    referer: bidderRequest.refererInfo.page,
+    domain: config.getConfig('publisherDomain'),
+    referer: bidderRequest.refererInfo.referer,
     auctionStartTime: bidderRequest.auctionStart,
     currency: currency,
     timeout: config.getConfig('bidderTimeout')

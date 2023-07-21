@@ -2,17 +2,12 @@ import {ajax} from '../src/ajax.js';
 import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
-import {Renderer} from '../src/Renderer.js';
-import { getRefererInfo } from '../src/refererDetection.js';
 
 const BIDDER_CODE = 'mediasquare';
 const BIDDER_URL_PROD = 'https://pbs-front.mediasquare.fr/'
 const BIDDER_URL_TEST = 'https://bidder-test.mediasquare.fr/'
 const BIDDER_ENDPOINT_AUCTION = 'msq_prebid';
 const BIDDER_ENDPOINT_WINNING = 'winning';
-
-const OUTSTREAM_RENDERER_URL = 'https://acdn.adnxs.com/video/outstream/ANOutstreamVideo.js';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -35,24 +30,17 @@ export const spec = {
          * @return ServerRequest Info describing the request to the server.
          */
   buildRequests: function(validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     let codes = [];
     let endpoint = document.location.search.match(/msq_test=true/) ? BIDDER_URL_TEST : BIDDER_URL_PROD;
     let floor = {};
     const test = config.getConfig('debug') ? 1 : 0;
     let adunitValue = null;
     Object.keys(validBidRequests).forEach(key => {
-      floor = {};
       adunitValue = validBidRequests[key];
       if (typeof adunitValue.getFloor === 'function') {
-        if (Array.isArray(adunitValue.sizes)) {
-          adunitValue.sizes.forEach(value => {
-            let tmpFloor = adunitValue.getFloor({currency: 'USD', mediaType: '*', size: value});
-            if (tmpFloor != {}) { floor[value.join('x')] = tmpFloor; }
-          });
-        }
+        floor = adunitValue.getFloor({currency: 'EUR', mediaType: '*', size: '*'});
+      } else {
+        floor = {};
       }
       codes.push({
         owner: adunitValue.params.owner,
@@ -67,8 +55,7 @@ export const spec = {
     });
     const payload = {
       codes: codes,
-      // TODO: is 'page' the right value here?
-      referer: encodeURIComponent(bidderRequest.refererInfo.page || bidderRequest.refererInfo.topmostLocation),
+      referer: encodeURIComponent(bidderRequest.refererInfo.referer),
       pbjs: '$prebid.version$'
     };
     if (bidderRequest) { // modules informations (gdpr, ccpa, schain, userId)
@@ -127,9 +114,6 @@ export const spec = {
             'advertiserDomains': value['adomain']
           }
         };
-        if ('context' in value) {
-          bidResponse['mediasquare']['context'] = value['context'];
-        }
         if ('match' in value) {
           bidResponse['mediasquare']['match'] = value['match'];
         }
@@ -143,7 +127,6 @@ export const spec = {
           if ('url' in value['video']) { bidResponse['vastUrl'] = value['video']['url'] }
           if ('xml' in value['video']) { bidResponse['vastXml'] = value['video']['xml'] }
           bidResponse['mediaType'] = 'video';
-          bidResponse['renderer'] = createRenderer(value, OUTSTREAM_RENDERER_URL);
         }
         if (value.hasOwnProperty('deal_id')) { bidResponse['dealId'] = value['deal_id']; }
         bidResponses.push(bidResponse);
@@ -174,20 +157,15 @@ export const spec = {
      */
   onBidWon: function(bid) {
     // fires a pixel to confirm a winning bid
-    if (bid.hasOwnProperty('mediaType') && bid.mediaType == 'video') {
-      return;
-    }
-    let params = { pbjs: '$prebid.version$', referer: encodeURIComponent(getRefererInfo().page || getRefererInfo().topmostLocation) };
+    let params = {'pbjs': '$prebid.version$'};
     let endpoint = document.location.search.match(/msq_test=true/) ? BIDDER_URL_TEST : BIDDER_URL_PROD;
-    let paramsToSearchFor = ['bidder', 'code', 'match', 'hasConsent', 'context'];
+    let paramsToSearchFor = ['cpm', 'size', 'mediaType', 'currency', 'creativeId', 'adUnitCode', 'timeToRespond', 'requestId', 'auctionId']
     if (bid.hasOwnProperty('mediasquare')) {
-      for (let i = 0; i < paramsToSearchFor.length; i++) {
-        if (bid['mediasquare'].hasOwnProperty(paramsToSearchFor[i])) {
-          params[paramsToSearchFor[i]] = bid['mediasquare'][paramsToSearchFor[i]];
-        }
-      }
+      if (bid['mediasquare'].hasOwnProperty('bidder')) { params['bidder'] = bid['mediasquare']['bidder']; }
+      if (bid['mediasquare'].hasOwnProperty('code')) { params['code'] = bid['mediasquare']['code']; }
+      if (bid['mediasquare'].hasOwnProperty('match')) { params['match'] = bid['mediasquare']['match']; }
+      if (bid['mediasquare'].hasOwnProperty('hasConsent')) { params['hasConsent'] = bid['mediasquare']['hasConsent']; }
     };
-    paramsToSearchFor = ['cpm', 'size', 'mediaType', 'currency', 'creativeId', 'adUnitCode', 'timeToRespond', 'requestId', 'auctionId', 'originalCpm', 'originalCurrency'];
     for (let i = 0; i < paramsToSearchFor.length; i++) {
       if (bid.hasOwnProperty(paramsToSearchFor[i])) {
         params[paramsToSearchFor[i]] = bid[paramsToSearchFor[i]];
@@ -199,35 +177,4 @@ export const spec = {
   }
 
 }
-
-function outstreamRender(bid) {
-  bid.renderer.push(() => {
-    window.ANOutstreamVideo.renderAd({
-      sizes: [bid.width, bid.height],
-      targetId: bid.adUnitCode,
-      adResponse: bid.adResponse,
-      rendererOptions: {
-        showBigPlayButton: false,
-        showProgressBar: 'bar',
-        showVolume: false,
-        allowFullscreen: true,
-        skippable: false,
-        content: bid.vastXml
-      }
-    });
-  });
-}
-
-function createRenderer(bid, url) {
-  const renderer = Renderer.install({
-    id: bid.bidId,
-    url: url,
-    loaded: false,
-    adUnitCode: bid.adUnitCode,
-    targetId: bid.adUnitCode
-  });
-  renderer.setRender(outstreamRender);
-  return renderer;
-}
-
 registerBidder(spec);

@@ -1,5 +1,4 @@
 import { isFn, deepAccess, logMessage, logError } from '../src/utils.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
@@ -113,9 +112,6 @@ export const spec = {
   },
 
   buildRequests: (validBidRequests = [], bidderRequest = {}) => {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     let deviceWidth = 0;
     let deviceHeight = 0;
 
@@ -130,14 +126,14 @@ export const spec = {
       winLocation = window.location;
     }
 
-    const refferUrl = bidderRequest.refererInfo && bidderRequest.refererInfo.page;
+    const refferUrl = bidderRequest.refererInfo && bidderRequest.refererInfo.referer;
     let refferLocation;
     try {
       refferLocation = refferUrl && new URL(refferUrl);
     } catch (e) {
       logMessage(e);
     }
-    // TODO: does the fallback make sense here?
+
     let location = refferLocation || winLocation;
     const language = (navigator && navigator.language) ? navigator.language.split('-')[0] : '';
     const host = location.host;
@@ -155,7 +151,7 @@ export const spec = {
       coppa: config.getConfig('coppa') === true ? 1 : 0,
       ccpa: bidderRequest.uspConsent || undefined,
       gdpr: bidderRequest.gdprConsent || undefined,
-      tmax: bidderRequest.timeout
+      tmax: config.getConfig('bidderTimeout')
     };
 
     const len = validBidRequests.length;

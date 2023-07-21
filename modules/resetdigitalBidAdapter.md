@@ -21,43 +21,17 @@ Video is supported but requires a publisher supplied renderer at this time.
                mediaTypes: {
                    banner: {
                        sizes: [[300,250]]
-                   },
-                   
+                   }
                },
                bids: [
                    {
                        bidder: "resetdigital",
                        params: {
                            pubId: "your-pub-id",
-                           site_id: "your-site-id",
-                           forceBid: true,
+                           forceBid: true
                        }
                    }
                ]
            }
        ];
-
-
-    var videoAdUnits = [
-           {
-               code: 'your-div',
-               mediaTypes: {
-                   video: {
-                        playerSize: [640, 480]
-                   },
-                   
-               },
-               bids: [
-                   {
-                       bidder: "resetdigital",
-                       params: {
-                           pubId: "your-pub-id",
-                           site_id: "your-site-id",
-                           forceBid: true,
-                       }
-                   }
-               ]
-           }
-       ];
-
 ```

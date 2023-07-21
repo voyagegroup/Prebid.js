@@ -1,14 +1,11 @@
-import { deepAccess, isNumber, getDNT, deepSetValue, logInfo, logError, isEmpty, getAdUnitSizes, fill, chunk, getMaxValueFromArray, getMinValueFromArray } from '../src/utils.js';
-import {find} from '../src/polyfill.js';
+import { deepAccess, getDNT, deepSetValue, logInfo, logError, isEmpty, getAdUnitSizes, fill, chunk, getMaxValueFromArray, getMinValueFromArray } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {config} from '../src/config.js';
-import {ADPOD, BANNER, VIDEO, NATIVE} from '../src/mediaTypes.js';
-import CONSTANTS from '../src/constants.json';
+import {ADPOD, BANNER, VIDEO} from '../src/mediaTypes.js';
 
-const { NATIVE_IMAGE_TYPES } = CONSTANTS;
 const BIDDER_CODE = 'smaato';
 const SMAATO_ENDPOINT = 'https://prebid.ad.smaato.net/oapi/prebid';
-const SMAATO_CLIENT = 'prebid_js_$prebid.version$_1.8'
+const SMAATO_CLIENT = 'prebid_js_$prebid.version$_1.6'
 const CURRENCY = 'USD';
 
 const buildOpenRtbBidRequest = (bidRequest, bidderRequest) => {
@@ -19,10 +16,9 @@ const buildOpenRtbBidRequest = (bidRequest, bidderRequest) => {
     tmax: bidderRequest.timeout,
     site: {
       id: window.location.hostname,
-      // TODO: do the fallbacks make sense here?
-      domain: bidderRequest.refererInfo.domain || window.location.hostname,
-      page: bidderRequest.refererInfo.page || window.location.href,
-      ref: bidderRequest.refererInfo.ref
+      domain: window.location.hostname,
+      page: window.location.href,
+      ref: bidderRequest.refererInfo.referer
     },
     device: {
       language: (navigator && navigator.language) ? navigator.language.split('-')[0] : '',
@@ -48,7 +44,7 @@ const buildOpenRtbBidRequest = (bidRequest, bidderRequest) => {
     }
   };
 
-  let ortb2 = bidderRequest.ortb2 || {};
+  let ortb2 = config.getConfig('ortb2') || {};
   Object.assign(requestTemplate.user, ortb2.user);
   Object.assign(requestTemplate.site, ortb2.site);
 
@@ -63,28 +59,11 @@ const buildOpenRtbBidRequest = (bidRequest, bidderRequest) => {
     deepSetValue(requestTemplate, 'regs.ext.us_privacy', bidderRequest.uspConsent);
   }
 
-  if (ortb2.regs?.gpp !== undefined) {
-    deepSetValue(requestTemplate, 'regs.ext.gpp', ortb2.regs.gpp);
-    deepSetValue(requestTemplate, 'regs.ext.gpp_sid', ortb2.regs.gpp_sid);
-  }
-
-  if (ortb2.device?.ifa !== undefined) {
-    deepSetValue(requestTemplate, 'device.ifa', ortb2.device.ifa);
-  }
-
-  if (ortb2.device?.geo !== undefined) {
-    deepSetValue(requestTemplate, 'device.geo', ortb2.device.geo);
-  }
-
   if (deepAccess(bidRequest, 'params.app')) {
-    if (!deepAccess(requestTemplate, 'device.geo')) {
-      const geo = deepAccess(bidRequest, 'params.app.geo');
-      deepSetValue(requestTemplate, 'device.geo', geo);
-    }
-    if (!deepAccess(requestTemplate, 'device.ifa')) {
-      const ifa = deepAccess(bidRequest, 'params.app.ifa');
-      deepSetValue(requestTemplate, 'device.ifa', ifa);
-    }
+    const geo = deepAccess(bidRequest, 'params.app.geo');
+    deepSetValue(requestTemplate, 'device.geo', geo);
+    const ifa = deepAccess(bidRequest, 'params.app.ifa')
+    deepSetValue(requestTemplate, 'device.ifa', ifa);
   }
 
   const eids = deepAccess(bidRequest, 'userIdAsEids');
@@ -111,12 +90,6 @@ const buildOpenRtbBidRequest = (bidRequest, bidderRequest) => {
     }
   }
 
-  const nativeOrtbRequest = bidRequest.nativeOrtbRequest;
-  if (nativeOrtbRequest) {
-    const nativeRequest = Object.assign({}, requestTemplate, createNativeImp(bidRequest, nativeOrtbRequest));
-    requests.push(nativeRequest);
-  }
-
   return requests;
 }
 
@@ -135,11 +108,11 @@ const buildServerRequest = (validBidRequest, data) => {
 
 export const spec = {
   code: BIDDER_CODE,
-  supportedMediaTypes: [BANNER, VIDEO, NATIVE],
+  supportedMediaTypes: [BANNER, VIDEO],
   gvlid: 82,
 
   /**
-   * Determines whether the given bid request is valid.
+   * Determines whether or not the given bid request is valid.
    *
    * @param {BidRequest} bid The bid params to validate.
    * @return boolean True if this is a valid bid, and false otherwise.
@@ -197,7 +170,6 @@ export const spec = {
    * Unpack the response from the server into a list of bids.
    *
    * @param {ServerResponse} serverResponse A successful response from the server.
-   * @param {BidRequest} bidRequest
    * @return {Bid[]} An array of bids which were nested inside the server.
    */
   interpretResponse: (serverResponse, bidRequest) => {
@@ -237,7 +209,7 @@ export const spec = {
           }
         };
 
-        const videoContext = deepAccess(JSON.parse(bidRequest.data).imp[0], 'video.ext.context');
+        const videoContext = deepAccess(JSON.parse(bidRequest.data).imp[0], 'video.ext.context')
         if (videoContext === ADPOD) {
           resultingBid.vastXml = bid.adm;
           resultingBid.mediaType = VIDEO;
@@ -264,11 +236,6 @@ export const spec = {
             case 'Video':
               resultingBid.vastXml = bid.adm;
               resultingBid.mediaType = VIDEO;
-              bids.push(resultingBid);
-              break;
-            case 'Native':
-              resultingBid.native = createNativeAd(bid.adm);
-              resultingBid.mediaType = NATIVE;
               bids.push(resultingBid);
               break;
             default:
@@ -329,13 +296,6 @@ const createRichmediaAd = (adm) => {
   return markup + '</div>';
 };
 
-const createNativeAd = (adm) => {
-  const nativeResponse = JSON.parse(adm).native;
-  return {
-    ortb: nativeResponse
-  }
-};
-
 function createBannerImp(bidRequest) {
   const adUnitSizes = getAdUnitSizes(bidRequest);
   const sizes = adUnitSizes.map((size) => ({w: size[0], h: size[1]}));
@@ -379,33 +339,6 @@ function createVideoImp(bidRequest, videoMediaType) {
       }
     }]
   };
-}
-
-function createNativeImp(bidRequest, nativeRequest) {
-  return {
-    imp: [{
-      id: bidRequest.bidId,
-      tagid: deepAccess(bidRequest, 'params.adspaceId'),
-      bidfloor: getBidFloor(bidRequest, NATIVE, getNativeMainImageSize(nativeRequest)),
-      native: {
-        request: JSON.stringify(nativeRequest),
-        ver: '1.2'
-      }
-    }]
-  };
-}
-
-function getNativeMainImageSize(nativeRequest) {
-  const mainImage = find(nativeRequest.assets, asset => asset.hasOwnProperty('img') && asset.img.type === NATIVE_IMAGE_TYPES.MAIN)
-  if (mainImage) {
-    if (isNumber(mainImage.img.w) && isNumber(mainImage.img.h)) {
-      return [[mainImage.img.w, mainImage.img.h]]
-    }
-    if (isNumber(mainImage.img.wmin) && isNumber(mainImage.img.hmin)) {
-      return [[mainImage.img.wmin, mainImage.img.hmin]]
-    }
-  }
-  return []
 }
 
 function createAdPodImp(bidRequest, videoMediaType) {

@@ -63,8 +63,7 @@ describe('loglyliftBidAdapter', function () {
 
   const bidderRequest = {
     refererInfo: {
-      domain: 'domain',
-      page: 'fakeReferer',
+      referer: 'fakeReferer',
       reachedTop: true,
       numIframes: 1,
       stack: []
@@ -161,7 +160,7 @@ describe('loglyliftBidAdapter', function () {
         expect(data.prebidJsVersion).to.equal('$prebid.version$');
         expect(data.url).to.exist;
         expect(data.domain).to.exist;
-        expect(data.referer).to.equal(bidderRequest.refererInfo.page);
+        expect(data.referer).to.equal(bidderRequest.refererInfo.referer);
         expect(data.auctionStartTime).to.equal(bidderRequest.auctionStart);
         expect(data.currency).to.exist;
         expect(data.timeout).to.equal(bidderRequest.timeout);

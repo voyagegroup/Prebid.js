@@ -15,8 +15,12 @@ export const spec = {
   },
 
   buildRequests: function (validBidRequests, bidderRequest) {
-    // TODO does it make sense to fall back to window.location.href?
-    const referer = bidderRequest?.refererInfo?.page || window.location.href;
+    let referer = window.location.href;
+    try {
+      referer = typeof bidderRequest.refererInfo === 'undefined'
+        ? window.top.location.href
+        : bidderRequest.refererInfo.referer;
+    } catch (e) {}
 
     let bidRequests = [];
     let beaconParams = {

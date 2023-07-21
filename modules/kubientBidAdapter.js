@@ -67,9 +67,8 @@ export const spec = {
         data.coppa = 1
       }
 
-      if (bidderRequest?.refererInfo?.page) {
-        // TODO: is 'page' the right value here?
-        data.referer = bidderRequest.refererInfo.page
+      if (bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+        data.referer = bidderRequest.refererInfo.referer
       }
 
       if (bidderRequest.gdprConsent && bidderRequest.gdprConsent.consentString) {
@@ -152,7 +151,15 @@ function encodeQueryData(data) {
 function kubientGetConsentGiven(gdprConsent) {
   let consentGiven = 0;
   if (typeof gdprConsent !== 'undefined') {
-    consentGiven = deepAccess(gdprConsent, `vendorData.vendor.consents.${VENDOR_ID}`) ? 1 : 0;
+    let apiVersion = deepAccess(gdprConsent, `apiVersion`);
+    switch (apiVersion) {
+      case 1:
+        consentGiven = deepAccess(gdprConsent, `vendorData.vendorConsents.${VENDOR_ID}`) ? 1 : 0;
+        break;
+      case 2:
+        consentGiven = deepAccess(gdprConsent, `vendorData.vendor.consents.${VENDOR_ID}`) ? 1 : 0;
+        break;
+    }
   }
   return consentGiven;
 }

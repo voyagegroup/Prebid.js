@@ -1,8 +1,6 @@
 import { BANNER, NATIVE } from '../src/mediaTypes.js';
 import { createTrackPixelHtml } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
-
 const BIDDER_CODE = 'engageya';
 const ENDPOINT_URL = 'https://recs.engageya.com/rec-api/getrecs.json';
 const ENDPOINT_METHOD = 'GET';
@@ -15,10 +13,9 @@ function getPageUrl(bidRequest, bidderRequest) {
   if (bidRequest.params.pageUrl && bidRequest.params.pageUrl != '[PAGE_URL]') {
     return bidRequest.params.pageUrl;
   }
-  if (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.page) {
-    return bidderRequest.refererInfo.page;
+  if (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+    return bidderRequest.refererInfo.referer;
   }
-  // TODO: does this fallback make sense?
   const pageUrl = (isInIframe() && document.referrer)
     ? document.referrer
     : window.location.href;
@@ -128,9 +125,6 @@ export const spec = {
   },
 
   buildRequests: function (validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     if (!validBidRequests) {
       return [];
     }

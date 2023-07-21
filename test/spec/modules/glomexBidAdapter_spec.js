@@ -21,7 +21,7 @@ const BIDDER_REQUEST = {
     isAmp: true,
     numIframes: 0,
     reachedTop: true,
-    topmostLocation: 'https://glomex.com'
+    referer: 'https://glomex.com'
   },
   gdprConsent: {
     gdprApplies: true,
@@ -48,10 +48,6 @@ const RESPONSE = {
 }
 describe('glomexBidAdapter', function () {
   const adapter = newBidder(spec)
-
-  it('should expose gvlid', function() {
-    expect(spec.gvlid).to.equal(967)
-  });
 
   describe('inherited functions', function () {
     it('exists and is a function', function () {
@@ -95,12 +91,7 @@ describe('glomexBidAdapter', function () {
     })
 
     it('sends refererInfo', function () {
-      const expected = {
-        ...BIDDER_REQUEST.refererInfo,
-        referer: BIDDER_REQUEST.refererInfo.topmostLocation
-      }
-      delete expected.topmostLocation;
-      expect(request.data.refererInfo).to.eql(expected)
+      expect(request.data.refererInfo).to.eql(BIDDER_REQUEST.refererInfo)
     })
 
     it('sends gdprConsent', function () {

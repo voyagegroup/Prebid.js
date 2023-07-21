@@ -1,4 +1,4 @@
-import { deepSetValue, deepAccess } from '../src/utils.js';
+import { deepSetValue } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 
 const BIDDER_CODE = 'pubx';
@@ -16,11 +16,8 @@ export const spec = {
       const bidId = bidRequest.bidId;
       const params = bidRequest.params;
       const sid = params.sid;
-      const pageUrl = deepAccess(bidRequest, 'ortb2.site.page').replace(/\?.*$/, '');
-      const pageEnc = encodeURIComponent(pageUrl);
       const payload = {
-        sid: sid,
-        pu: pageEnc,
+        sid: sid
       };
       return {
         id: bidId,
@@ -79,7 +76,7 @@ export const spec = {
       } else {
         kwString = kwContents;
       }
-      kwEnc = encodeURIComponent(kwString);
+      kwEnc = encodeURIComponent(kwString)
     } else { }
     if (titleContent) {
       if (titleContent.length > 30) {

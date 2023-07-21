@@ -8,9 +8,8 @@ import {
 } from 'modules/consentManagementUsp.js';
 import * as utils from 'src/utils.js';
 import { config } from 'src/config.js';
-import adapterManager, {gdprDataHandler, uspDataHandler} from 'src/adapterManager.js';
+import {uspDataHandler} from 'src/adapterManager.js';
 import 'src/prebid.js';
-import {defer} from '../../../src/utils/promise.js';
 
 let expect = require('chai').expect;
 
@@ -24,41 +23,8 @@ function createIFrameMarker() {
 }
 
 describe('consentManagement', function () {
-  let sandbox;
-  beforeEach(() => {
-    sandbox = sinon.sandbox.create();
-    sandbox.stub(adapterManager, 'callDataDeletionRequest');
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
-  it('should enable itself on requestBids using default values', (done) => {
-    requestBidsHook(() => {
-      expect(uspDataHandler.enabled).to.be.true;
-      expect(consentAPI).to.eql('iab');
-      done();
-    }, {});
-  });
-  it('should respect configuration set after activation', () => {
-    setConsentConfig({
-      usp: {
-        cmpApi: 'static',
-        consentData: {
-          getUSPData: {
-            uspString: '1YYY'
-          }
-        }
-      }
-    });
-    expect(uspDataHandler.getConsentData()).to.equal('1YYY');
-  })
-
   describe('setConsentConfig tests:', function () {
     describe('empty setConsentConfig value', function () {
-      before(resetConsentData);
-
       beforeEach(function () {
         sinon.stub(utils, 'logInfo');
         sinon.stub(utils, 'logWarn');
@@ -71,11 +37,11 @@ describe('consentManagement', function () {
         resetConsentData();
       });
 
-      it('should run with defaults if no config', function () {
+      it('should not run if no config', function () {
         setConsentConfig({});
-        expect(consentAPI).to.be.equal('iab');
-        expect(consentTimeout).to.be.equal(50);
-        sinon.assert.callCount(utils.logInfo, 3);
+        expect(consentAPI).to.be.undefined;
+        expect(consentTimeout).to.be.undefined;
+        sinon.assert.callCount(utils.logWarn, 1);
       });
 
       it('should use system default values', function () {
@@ -85,11 +51,11 @@ describe('consentManagement', function () {
         sinon.assert.callCount(utils.logInfo, 3);
       });
 
-      it('should not exit the consent manager if config.usp is not an object', function() {
+      it('should exit the consent manager if config.usp is not an object', function() {
         setConsentConfig({});
-        expect(consentAPI).to.be.equal('iab');
-        expect(consentTimeout).to.be.equal(50);
-        sinon.assert.callCount(utils.logInfo, 3);
+        expect(consentAPI).to.be.undefined;
+        sinon.assert.calledOnce(utils.logWarn);
+        sinon.assert.notCalled(utils.logInfo);
       });
 
       it('should not produce any USP metadata', function() {
@@ -100,16 +66,16 @@ describe('consentManagement', function () {
 
       it('should exit the consent manager if only config.gdpr is an object', function() {
         setConsentConfig({ gdpr: { cmpApi: 'iab' } });
-        expect(consentAPI).to.be.equal('iab');
-        expect(consentTimeout).to.be.equal(50);
-        sinon.assert.callCount(utils.logInfo, 3);
+        expect(consentAPI).to.be.undefined;
+        sinon.assert.calledOnce(utils.logWarn);
+        sinon.assert.notCalled(utils.logInfo);
       });
 
       it('should exit consentManagementUsp module if config is "undefined"', function() {
         setConsentConfig(undefined);
-        expect(consentAPI).to.be.equal('iab');
-        expect(consentTimeout).to.be.equal(50);
-        sinon.assert.callCount(utils.logInfo, 3);
+        expect(consentAPI).to.be.undefined;
+        sinon.assert.calledOnce(utils.logWarn);
+        sinon.assert.notCalled(utils.logInfo);
       });
 
       it('should immediately start looking up consent data', () => {
@@ -312,11 +278,8 @@ describe('consentManagement', function () {
     describe('USPAPI workflow for iframed page', function () {
       let ifr = null;
       let stringifyResponse = false;
-      let mockApi, replySent;
 
       beforeEach(function () {
-        mockApi = sinon.stub();
-        replySent = defer();
         sinon.stub(utils, 'logError');
         sinon.stub(utils, 'logWarn');
         ifr = createIFrameMarker();
@@ -336,21 +299,17 @@ describe('consentManagement', function () {
 
       function uspapiMessageHandler(event) {
         if (event && event.data) {
-          const data = event.data;
+          var data = event.data;
           if (data.__uspapiCall) {
-            const {command, version, callId} = data.__uspapiCall;
-            let response = mockApi(command, version, callId);
-            if (response) {
-              response = {
-                __uspapiReturn: {
-                  callId,
-                  returnValue: response,
-                  success: true
-                }
+            var callId = data.__uspapiCall.callId;
+            var response = {
+              __uspapiReturn: {
+                callId,
+                returnValue: { uspString: '1YY' },
+                success: true
               }
-              event.source.postMessage(stringifyResponse ? JSON.stringify(response) : response, '*');
-              replySent.resolve();
-            }
+            };
+            event.source.postMessage(stringifyResponse ? JSON.stringify(response) : response, '*');
           }
         }
       }
@@ -363,11 +322,6 @@ describe('consentManagement', function () {
       function testIFramedPage(testName, messageFormatString) {
         it(`should return the consent string from a postmessage + addEventListener response - ${testName}`, (done) => {
           stringifyResponse = messageFormatString;
-          mockApi.callsFake((cmd) => {
-            if (cmd === 'getUSPData') {
-              return { uspString: '1YY' }
-            }
-          })
           setConsentConfig(goodConfig);
           requestBidsHook(() => {
             let consent = uspDataHandler.getConsentData();
@@ -378,20 +332,6 @@ describe('consentManagement', function () {
           }, {});
         });
       }
-
-      it('fires deletion request on registerDeletion', (done) => {
-        mockApi.callsFake((cmd) => {
-          return cmd === 'registerDeletion'
-        })
-        sinon.assert.notCalled(adapterManager.callDataDeletionRequest);
-        setConsentConfig(goodConfig);
-        replySent.promise.then(() => {
-          setTimeout(() => { // defer again to give time for the message to get through
-            sinon.assert.calledOnce(adapterManager.callDataDeletionRequest);
-            done()
-          }, 200)
-        })
-      });
     });
 
     describe('test without iframe locater', function() {
@@ -437,19 +377,23 @@ describe('consentManagement', function () {
     });
 
     describe('USPAPI workflow for normal pages:', function () {
+      let uspapiStub = sinon.stub();
       let ifr = null;
 
       beforeEach(function () {
         didHookReturn = false;
         ifr = createIFrameMarker();
-        sandbox.stub(utils, 'logError');
-        sandbox.stub(utils, 'logWarn');
+        sinon.stub(utils, 'logError');
+        sinon.stub(utils, 'logWarn');
         window.__uspapi = function() {};
       });
 
       afterEach(function () {
         config.resetConfig();
         $$PREBID_GLOBAL$$.requestBids.removeAll();
+        uspapiStub.restore();
+        utils.logError.restore();
+        utils.logWarn.restore();
         document.body.removeChild(ifr);
         delete window.__uspapi;
         resetConsentData();
@@ -460,7 +404,7 @@ describe('consentManagement', function () {
           uspString: '1NY'
         };
 
-        sandbox.stub(window, '__uspapi').callsFake((...args) => {
+        uspapiStub = sinon.stub(window, '__uspapi').callsFake((...args) => {
           args[2](testConsentData, true);
         });
 
@@ -481,7 +425,7 @@ describe('consentManagement', function () {
           uspString: '1NY'
         };
 
-        sandbox.stub(window, '__uspapi').callsFake((...args) => {
+        uspapiStub = sinon.stub(window, '__uspapi').callsFake((...args) => {
           args[2](testConsentData, true);
         });
 
@@ -495,32 +439,6 @@ describe('consentManagement', function () {
 
         expect(consentMeta.usp).to.equal(testConsentData.uspString);
         expect(consentMeta.generatedAt).to.be.above(1644367751709);
-      });
-
-      it('registers deletion request event listener', () => {
-        let listener;
-        sandbox.stub(window, '__uspapi').callsFake((cmd, _, cb) => {
-          if (cmd === 'registerDeletion') {
-            listener = cb;
-          }
-        });
-        setConsentConfig(goodConfig);
-        sinon.assert.notCalled(adapterManager.callDataDeletionRequest);
-        listener();
-        sinon.assert.calledOnce(adapterManager.callDataDeletionRequest);
-      });
-
-      it('does not fail if CMP does not support registerDeletion', () => {
-        sandbox.stub(window, '__uspapi').callsFake((cmd, _, cb) => {
-          if (cmd === 'registerDeletion') {
-            throw new Error('CMP not compliant');
-          } else if (cmd === 'getUSPData') {
-            // eslint-disable-next-line standard/no-callback-literal
-            cb({uspString: 'string'}, true);
-          }
-        });
-        setConsentConfig(goodConfig);
-        expect(uspDataHandler.getConsentData()).to.eql('string');
       });
     });
   });

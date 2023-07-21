@@ -62,8 +62,7 @@ describe('Adserver.Online bidding adapter', function () {
     refererInfo: {
       numIframes: 0,
       reachedTop: true,
-      page: 'https://example.com',
-      domain: 'example.com'
+      referer: 'https://example.com'
     }
   };
 
@@ -125,7 +124,7 @@ describe('Adserver.Online bidding adapter', function () {
       expect(parsedRequestUrl.pathname).to.equal('/prebid/bidder');
 
       const query = parsedRequestUrl.search;
-      expect(query.pbjs).to.contain('$prebid.version$');
+      expect(query.pbjs).to.equal('$prebid.version$');
       expect(query.zid).to.equal('1');
 
       expect(request.data).to.exist;
@@ -162,7 +161,7 @@ describe('Adserver.Online bidding adapter', function () {
       expect(parsedRequestUrl.pathname).to.equal('/prebid/bidder');
 
       const query = parsedRequestUrl.search;
-      expect(query.pbjs).to.contain('$prebid.version$');
+      expect(query.pbjs).to.equal('$prebid.version$');
       expect(query.zid).to.equal('2');
 
       expect(request.data).to.not.be.empty;

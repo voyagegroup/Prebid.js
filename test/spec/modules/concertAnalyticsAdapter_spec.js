@@ -1,6 +1,5 @@
 import concertAnalytics from 'modules/concertAnalyticsAdapter.js';
 import { expect } from 'chai';
-import {expectEvents} from '../../helpers/analytics.js';
 const sinon = require('sinon');
 let adapterManager = require('src/adapterManager').default;
 let events = require('src/events');
@@ -47,7 +46,9 @@ describe('ConcertAnalyticsAdapter', function() {
 
     it('should catch all events', function() {
       sandbox.spy(concertAnalytics, 'track');
-      expectEvents().to.beTrackedBy(concertAnalytics.track);
+
+      fireBidEvents(events);
+      sandbox.assert.callCount(concertAnalytics.track, 5);
     });
 
     it('should report data for BID_RESPONSE, BID_WON events', function() {

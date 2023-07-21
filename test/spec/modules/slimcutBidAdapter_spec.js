@@ -106,7 +106,7 @@ describe('slimcutBidAdapter', function() {
       const bidRequest = Object.assign({}, bidRequests[0])
       const bidderRequest = {
         refererInfo: {
-          page: 'https://example.com/page.html',
+          referer: 'https://example.com/page.html',
           reachedTop: true,
           numIframes: 2
         }

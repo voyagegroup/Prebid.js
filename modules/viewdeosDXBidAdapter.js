@@ -125,8 +125,7 @@ function parseRTBResponse(serverResponse, bidderRequest) {
 
 function bidToTag(bidRequests, bidderRequest) {
   const tag = {
-    // TODO: is 'page' the right value here?
-    domain: deepAccess(bidderRequest, 'refererInfo.page')
+    domain: deepAccess(bidderRequest, 'refererInfo.referer')
   };
 
   if (deepAccess(bidderRequest, 'gdprConsent.gdprApplies')) {

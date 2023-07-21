@@ -1,6 +1,8 @@
-import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {BANNER} from '../src/mediaTypes.js';
-import {_each, _map, createTrackPixelHtml, deepAccess, isFn, isNumber, logError, logWarn} from '../src/utils.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { BANNER } from '../src/mediaTypes.js';
+import {
+  _each, _map, isFn, isNumber, createTrackPixelHtml, deepAccess, parseUrl, logWarn, logError
+} from '../src/utils.js';
 import {config} from '../src/config.js';
 
 export const BIDDER_CODE = 'deltaprojects';
@@ -30,13 +32,14 @@ function buildRequests(validBidRequests, bidderRequest) {
   const id = bidderRequest.auctionId;
 
   // -- build site
+  const loc = parseUrl(bidderRequest.refererInfo.referer);
   const publisherId = setOnAny(validBidRequests, 'params.publisherId');
   const siteId = setOnAny(validBidRequests, 'params.siteId');
   const site = {
     id: siteId,
-    domain: bidderRequest.refererInfo.domain,
-    page: bidderRequest.refererInfo.page,
-    ref: bidderRequest.refererInfo.ref,
+    domain: loc.hostname,
+    page: loc.href,
+    ref: loc.href,
     publisher: { id: publisherId },
   };
 

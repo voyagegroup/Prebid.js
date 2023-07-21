@@ -2,7 +2,6 @@ import {deepAccess, isFn, logError, logMessage} from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'smarthub';
 
@@ -101,7 +100,7 @@ function buildRequestParams(bidderRequest = {}, placements = []) {
     winLocation = window.location;
   }
 
-  const refferUrl = bidderRequest.refererInfo && bidderRequest.refererInfo.page;
+  const refferUrl = bidderRequest.refererInfo && bidderRequest.refererInfo.referer;
   let refferLocation;
   try {
     refferLocation = refferUrl && new URL(refferUrl);
@@ -125,7 +124,7 @@ function buildRequestParams(bidderRequest = {}, placements = []) {
     coppa: config.getConfig('coppa') === true ? 1 : 0,
     ccpa: bidderRequest.uspConsent || undefined,
     gdpr: bidderRequest.gdprConsent || undefined,
-    tmax: bidderRequest.timeout
+    tmax: config.getConfig('bidderTimeout')
   };
 }
 
@@ -150,8 +149,6 @@ export const spec = {
   },
 
   buildRequests: (validBidRequests = [], bidderRequest = {}) => {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
     const tempObj = {};
 
     const len = validBidRequests.length;

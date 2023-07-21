@@ -1,7 +1,6 @@
 import { isFn, deepAccess, logMessage } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'boldwin';
 const AD_URL = 'https://ssp.videowalldirect.com/pbjs';
@@ -46,18 +45,14 @@ export const spec = {
   supportedMediaTypes: [BANNER, VIDEO, NATIVE],
 
   isBidRequestValid: (bid) => {
-    return Boolean(bid.bidId && bid.params && (bid.params.placementId || bid.params.endpointId));
+    return Boolean(bid.bidId && bid.params && bid.params.placementId);
   },
 
   buildRequests: (validBidRequests = [], bidderRequest) => {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     let winTop = window;
     let location;
-    // TODO: this odd try-catch block was copied in several adapters; it doesn't seem to be correct for cross-origin
     try {
-      location = new URL(bidderRequest.refererInfo.page);
+      location = new URL(bidderRequest.refererInfo.referer)
       winTop = window.top;
     } catch (e) {
       location = winTop.location;
@@ -78,23 +73,23 @@ export const spec = {
         request.ccpa = bidderRequest.uspConsent;
       }
       if (bidderRequest.gdprConsent) {
-        request.gdpr = bidderRequest.gdprConsent;
+        request.gdpr = bidderRequest.gdprConsent
       }
     }
     const len = validBidRequests.length;
 
     for (let i = 0; i < len; i++) {
       let bid = validBidRequests[i];
-      const { mediaTypes, params } = bid;
+      const { mediaTypes } = bid;
       const placement = {};
       let sizes;
       if (mediaTypes) {
         if (mediaTypes[BANNER] && mediaTypes[BANNER].sizes) {
           placement.adFormat = BANNER;
-          sizes = mediaTypes[BANNER].sizes;
+          sizes = mediaTypes[BANNER].sizes
         } else if (mediaTypes[VIDEO] && mediaTypes[VIDEO].playerSize) {
           placement.adFormat = VIDEO;
-          sizes = mediaTypes[VIDEO].playerSize;
+          sizes = mediaTypes[VIDEO].playerSize
           placement.minduration = mediaTypes[VIDEO].minduration;
           placement.maxduration = mediaTypes[VIDEO].maxduration;
           placement.mimes = mediaTypes[VIDEO].mimes;
@@ -114,18 +109,9 @@ export const spec = {
           placement.native = mediaTypes[NATIVE];
         }
       }
-
-      const { placementId, endpointId } = params;
-      if (placementId) {
-        placement.placementId = placementId;
-        placement.type = 'publisher';
-      } else if (endpointId) {
-        placement.endpointId = endpointId;
-        placement.type = 'network';
-      }
-
       placements.push({
         ...placement,
+        placementId: bid.params.placementId,
         bidId: bid.bidId,
         sizes: sizes || [],
         wPlayer: sizes ? sizes[0] : 0,

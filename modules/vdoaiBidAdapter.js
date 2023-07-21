@@ -1,4 +1,5 @@
-import {getAdUnitSizes} from '../src/utils.js';
+import { getAdUnitSizes } from '../src/utils.js';
+import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, VIDEO} from '../src/mediaTypes.js';
 
@@ -36,8 +37,7 @@ export const spec = {
         placementId: bidRequest.params.placementId,
         sizes: sizes,
         bidId: bidRequest.bidId,
-        // TODO: is 'page' the right value here?
-        referer: bidderRequest.refererInfo.page,
+        referer: bidderRequest.refererInfo.referer,
         id: bidRequest.auctionId,
         mediaType: bidRequest.mediaTypes.video ? 'video' : 'banner'
       };
@@ -86,7 +86,7 @@ export const spec = {
         // dealId: dealId,
         currency: currency,
         netRevenue: netRevenue,
-        ttl: 60,
+        ttl: config.getConfig('_bidderTimeout'),
         // referrer: referrer,
         // ad: response.adm
         // ad: adCreative,
@@ -101,7 +101,7 @@ export const spec = {
       if (response.adDomain) {
         bidResponse.meta = {
           advertiserDomains: response.adDomain
-        };
+        }
       }
       bidResponses.push(bidResponse);
     }

@@ -1,10 +1,9 @@
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { parseSizesInput, logError, generateUUID, isEmpty, deepAccess, logWarn, logMessage, getGptSlotInfoForAdUnitCode, isFn, isPlainObject } from '../src/utils.js';
+import { parseSizesInput, logError, generateUUID, isEmpty, deepAccess, logWarn, logMessage, deepClone, getGptSlotInfoForAdUnitCode, isFn, isPlainObject } from '../src/utils.js';
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
 import { config } from '../src/config.js';
 import { Renderer } from '../src/Renderer.js';
 import { userSync } from '../src/userSync.js';
-import { bidderSettings } from '../src/bidderSettings.js';
 const BIDDER_CODE = 'sonobi';
 const STR_ENDPOINT = 'https://apex.go.sonobi.com/trinity.json';
 const PAGEVIEW_ID = generateUUID();
@@ -12,7 +11,6 @@ const OUTSTREAM_REDNERER_URL = 'https://mtrx.go.sonobi.com/sbi_outstream_rendere
 
 export const spec = {
   code: BIDDER_CODE,
-  gvlid: 104,
   supportedMediaTypes: [BANNER, VIDEO],
   /**
    * Determines whether or not the given bid request is valid.
@@ -50,7 +48,6 @@ export const spec = {
 
     return true;
   },
-
   /**
    * Make a server request from the list of BidRequests.
    *
@@ -59,23 +56,15 @@ export const spec = {
    */
   buildRequests: (validBidRequests, bidderRequest) => {
     const bids = validBidRequests.map(bid => {
-      let mediaType;
-
-      if (deepAccess(bid, 'mediaTypes.video')) {
-        mediaType = 'video';
-      } else if (deepAccess(bid, 'mediaTypes.banner')) {
-        mediaType = 'display';
-      }
-
       let slotIdentifier = _validateSlot(bid);
       if (/^[\/]?[\d]+[[\/].+[\/]?]?$/.test(slotIdentifier)) {
         slotIdentifier = slotIdentifier.charAt(0) === '/' ? slotIdentifier : '/' + slotIdentifier;
         return {
-          [`${slotIdentifier}|${bid.bidId}`]: `${_validateSize(bid)}|${_validateFloor(bid)}${_validateGPID(bid)}${_validateMediaType(mediaType)}`
+          [`${slotIdentifier}|${bid.bidId}`]: `${_validateSize(bid)}${_validateFloor(bid)}${_validateGPID(bid)}`
         }
       } else if (/^[0-9a-fA-F]{20}$/.test(slotIdentifier) && slotIdentifier.length === 20) {
         return {
-          [bid.bidId]: `${slotIdentifier}|${_validateSize(bid)}|${_validateFloor(bid)}${_validateGPID(bid)}${_validateMediaType(mediaType)}`
+          [bid.bidId]: `${slotIdentifier}|${_validateSize(bid)}${_validateFloor(bid)}${_validateGPID(bid)}`
         }
       } else {
         logError(`The ad unit code or Sonobi Placement id for slot ${bid.bidId} is invalid`);
@@ -87,18 +76,17 @@ export const spec = {
 
     const payload = {
       'key_maker': JSON.stringify(data),
-      // TODO: is 'page' the right value here?
-      'ref': bidderRequest.refererInfo.page,
+      'ref': bidderRequest.refererInfo.referer,
       's': generateUUID(),
       'pv': PAGEVIEW_ID,
       'vp': _getPlatform(),
       'lib_name': 'prebid',
       'lib_v': '$prebid.version$',
       'us': 0,
-      'iqid': bidderSettings.get(BIDDER_CODE, 'storageAllowed') ? JSON.stringify(loadOrCreateFirstPartyData()) : null,
+
     };
 
-    const fpd = bidderRequest.ortb2;
+    const fpd = config.getConfig('ortb2');
 
     if (fpd) {
       payload.fpd = JSON.stringify(fpd);
@@ -132,7 +120,16 @@ export const spec = {
     }
 
     if (validBidRequests[0].schain) {
-      payload.schain = JSON.stringify(validBidRequests[0].schain);
+      payload.schain = JSON.stringify(validBidRequests[0].schain)
+    }
+    if (deepAccess(validBidRequests[0], 'userId') && Object.keys(validBidRequests[0].userId).length > 0) {
+      const userIds = deepClone(validBidRequests[0].userId);
+
+      if (userIds.id5id) {
+        userIds.id5id = deepAccess(userIds, 'id5id.uid');
+      }
+
+      payload.userid = JSON.stringify(userIds);
     }
 
     const eids = deepAccess(validBidRequests[0], 'userIdAsEids');
@@ -211,7 +208,7 @@ export const spec = {
         ] = bid.sbi_size.split('x');
         let aDomains = [];
         if (bid.sbi_adomain) {
-          aDomains = [bid.sbi_adomain];
+          aDomains = [bid.sbi_adomain]
         }
         const bids = {
           requestId: bidId,
@@ -249,7 +246,7 @@ export const spec = {
           ));
           let videoSize = deepAccess(bidRequest, 'params.sizes');
           if (Array.isArray(videoSize) && Array.isArray(videoSize[0])) { // handle case of multiple sizes
-            videoSize = videoSize[0]; // Only take the first size for outstream
+            videoSize = videoSize[0] // Only take the first size for outstream
           }
           if (videoSize) {
             bids.width = videoSize[0];
@@ -275,7 +272,7 @@ export const spec = {
           });
         });
       }
-    } catch (e) { }
+    } catch (e) {}
     return syncs;
   }
 };
@@ -288,43 +285,36 @@ function _findBidderRequest(bidderRequests, bidId) {
   }
 }
 
-// This function takes all the possible sizes.
-// returns string csv.
-function _validateSize(bid) {
-  let size = [];
-  if (deepAccess(bid, 'mediaTypes.video.playerSize')) {
-    size.push(deepAccess(bid, 'mediaTypes.video.playerSize'))
+function _validateSize (bid) {
+  if (deepAccess(bid, 'mediaTypes.video')) {
+    return ''; // Video bids arent allowed to override sizes via the trinity request
   }
-  if (deepAccess(bid, 'mediaTypes.video.sizes')) {
-    size.push(deepAccess(bid, 'mediaTypes.video.sizes'))
-  }
-  if (deepAccess(bid, 'params.sizes')) {
-    size.push(deepAccess(bid, 'params.sizes'));
+
+  if (bid.params.sizes) {
+    return parseSizesInput(bid.params.sizes).join(',');
   }
   if (deepAccess(bid, 'mediaTypes.banner.sizes')) {
-    size.push(deepAccess(bid, 'mediaTypes.banner.sizes'))
+    return parseSizesInput(deepAccess(bid, 'mediaTypes.banner.sizes')).join(',');
   }
-  if (deepAccess(bid, 'sizes')) {
-    size.push(deepAccess(bid, 'sizes'))
+
+  // Handle deprecated sizes definition
+  if (bid.sizes) {
+    return parseSizesInput(bid.sizes).join(',');
   }
-  // Pass the 2d sizes array into parseSizeInput to flatten it into an array of x separated sizes.
-  // Then throw it into Set to uniquify it.
-  // Then spread it to an array again. Then join it into a csv of sizes.
-  return [...new Set(parseSizesInput(...size))].join(',');
 }
 
-function _validateSlot(bid) {
+function _validateSlot (bid) {
   if (bid.params.ad_unit) {
     return bid.params.ad_unit;
   }
   return bid.params.placement_id;
 }
 
-function _validateFloor(bid) {
+function _validateFloor (bid) {
   const floor = getBidFloor(bid);
 
   if (floor) {
-    return `f=${floor},`;
+    return `|f=${floor}`;
   }
   return '';
 }
@@ -333,20 +323,9 @@ function _validateGPID(bid) {
   const gpid = deepAccess(bid, 'ortb2Imp.ext.data.pbadslot') || deepAccess(getGptSlotInfoForAdUnitCode(bid.adUnitCode), 'gptSlot') || bid.params.ad_unit;
 
   if (gpid) {
-    return `gpid=${gpid},`
+    return `|gpid=${gpid}`
   }
   return ''
-}
-
-function _validateMediaType(mediaType) {
-  let mediaTypeValidation = '';
-  if (mediaType === 'video') {
-    mediaTypeValidation = 'c=v,';
-  } else if (mediaType === 'display') {
-    mediaTypeValidation = 'c=d,';
-  }
-
-  return mediaTypeValidation;
 }
 
 const _creative = (mediaType, referer) => (sbiDc, sbiAid) => {
@@ -361,7 +340,7 @@ function _videoCreative(sbiDc, sbiAid, referer) {
   return `https://${sbiDc}apex.go.sonobi.com/vast.xml?vid=${sbiAid}&ref=${encodeURIComponent(referer)}`
 }
 
-function _getBidIdFromTrinityKey(key) {
+function _getBidIdFromTrinityKey (key) {
   return key.split('|').slice(-1)[0]
 }
 
@@ -390,67 +369,6 @@ export function _getPlatform(context = window) {
   }
   return 'desktop';
 }
-/**
- * Check for local storage
- * Generate a UUID for the user if one does not exist in local storage
- * Store the UUID in local storage for future use
- * @return {object} firstPartyData - Data object containing first party information
- */
-function loadOrCreateFirstPartyData() {
-  var localStorageEnabled;
-
-  var FIRST_PARTY_KEY = '_iiq_fdata';
-  var tryParse = function (data) {
-    try {
-      return JSON.parse(data);
-    } catch (err) {
-      return null;
-    }
-  };
-  var readData = function (key) {
-    if (hasLocalStorage()) {
-      return window.localStorage.getItem(key);
-    }
-    return null;
-  };
-  var hasLocalStorage = function () {
-    if (typeof localStorageEnabled != 'undefined') { return localStorageEnabled; } else {
-      try {
-        localStorageEnabled = !!window.localStorage;
-        return localStorageEnabled;
-      } catch (e) {
-        localStorageEnabled = false;
-      }
-    }
-    return false;
-  };
-  var generateGUID = function () {
-    var d = new Date().getTime();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      var r = (d + Math.random() * 16) % 16 | 0;
-      d = Math.floor(d / 16);
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
-  };
-  var storeData = function (key, value) {
-    try {
-      if (hasLocalStorage()) {
-        window.localStorage.setItem(key, value);
-      }
-    } catch (error) {
-      return null;
-    }
-  };
-  var firstPartyData = tryParse(readData(FIRST_PARTY_KEY));
-  if (!firstPartyData || !firstPartyData.pcid) {
-    var firstPartyId = generateGUID();
-    firstPartyData = { pcid: firstPartyId, pcidDate: Date.now() };
-  } else if (firstPartyData && !firstPartyData.pcidDate) {
-    firstPartyData.pcidDate = Date.now();
-  }
-  storeData(FIRST_PARTY_KEY, JSON.stringify(firstPartyData));
-  return firstPartyData;
-};
 
 function newRenderer(adUnitCode, bid, rendererOptions = {}) {
   const renderer = Renderer.install({

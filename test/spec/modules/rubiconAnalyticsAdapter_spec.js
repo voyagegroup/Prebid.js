@@ -4,7 +4,6 @@ import rubiconAnalyticsAdapter, {
   getHostNameFromReferer,
   storage,
   rubiConf,
-  resetRubiConf
 } from 'modules/rubiconAnalyticsAdapter.js';
 import CONSTANTS from 'src/constants.json';
 import { config } from 'src/config.js';
@@ -236,7 +235,7 @@ const MOCK = {
       ],
       'timeout': 3000,
       'refererInfo': {
-        'page': 'http://www.test.com/page.html', 'reachedTop': true, 'numIframes': 0, 'stack': ['http://www.test.com/page.html']
+        'referer': 'http://www.test.com/page.html', 'reachedTop': true, 'numIframes': 0, 'stack': ['http://www.test.com/page.html']
       }
     }
     ],
@@ -320,7 +319,7 @@ const MOCK = {
     'timeout': 5000,
     'start': 1519149562216,
     'refererInfo': {
-      'page': 'http://www.test.com/page.html', 'reachedTop': true, 'numIframes': 0, 'stack': ['http://www.test.com/page.html']
+      'referer': 'http://www.test.com/page.html', 'reachedTop': true, 'numIframes': 0, 'stack': ['http://www.test.com/page.html']
     }
   },
   BID_RESPONSE: [
@@ -668,7 +667,6 @@ describe('rubicon analytics adapter', function () {
       expect(utils.generateUUID.called).to.equal(true);
     });
     it('should merge in and preserve older set configs', function () {
-      resetRubiConf();
       config.setConfig({
         rubicon: {
           wrapperName: '1001_general',
@@ -691,6 +689,7 @@ describe('rubicon analytics adapter', function () {
         fpkvs: {
           source: 'fb'
         },
+        updatePageView: true
       });
 
       // update it with stuff
@@ -715,6 +714,7 @@ describe('rubicon analytics adapter', function () {
           source: 'fb',
           link: 'email'
         },
+        updatePageView: true
       });
 
       // overwriting specific edge keys should update them
@@ -740,6 +740,7 @@ describe('rubicon analytics adapter', function () {
           link: 'iMessage',
           source: 'twitter'
         },
+        updatePageView: true
       });
     });
   });
@@ -2365,7 +2366,7 @@ describe('rubicon analytics adapter', function () {
       });
       basicBillingAuction([{
         vendor: 'vendorName',
-        type: 'pageView',
+        type: 'auction',
         billingId: 'f8558d41-62de-4349-bc7b-2dbee1e69965'
       }]);
       expect(server.requests.length).to.equal(1);
@@ -2375,7 +2376,7 @@ describe('rubicon analytics adapter', function () {
       expect(message.billableEvents).to.deep.equal([{
         accountId: 1001,
         vendor: 'vendorName',
-        type: 'pageView',
+        type: 'general', // mapping all events to endpoint as 'general' for now
         billingId: 'f8558d41-62de-4349-bc7b-2dbee1e69965'
       }]);
     });
@@ -2397,7 +2398,7 @@ describe('rubicon analytics adapter', function () {
         },
         {
           vendor: 'vendorName',
-          type: 'impression',
+          type: 'auction',
           billingId: '743db6e3-21f2-44d4-917f-cb3488c6076f'
         },
         {
@@ -2414,13 +2415,13 @@ describe('rubicon analytics adapter', function () {
         {
           accountId: 1001,
           vendor: 'vendorName',
-          type: 'auction',
+          type: 'general',
           billingId: 'f8558d41-62de-4349-bc7b-2dbee1e69965'
         },
         {
           accountId: 1001,
           vendor: 'vendorName',
-          type: 'impression',
+          type: 'general',
           billingId: '743db6e3-21f2-44d4-917f-cb3488c6076f'
         }
       ]);
@@ -2449,7 +2450,7 @@ describe('rubicon analytics adapter', function () {
         {
           accountId: 1001,
           vendor: 'vendorName',
-          type: 'auction',
+          type: 'general',
           billingId: 'f8558d41-62de-4349-bc7b-2dbee1e69965'
         }
       ]);
@@ -2479,7 +2480,7 @@ describe('rubicon analytics adapter', function () {
         {
           accountId: 1001,
           vendor: 'vendorName',
-          type: 'auction',
+          type: 'general',
           billingId: 'f8558d41-62de-4349-bc7b-2dbee1e69965'
         }
       ]);

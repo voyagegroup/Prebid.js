@@ -2,13 +2,13 @@
  * This module sets default values and validates ortb2 first part data
  * @module modules/firstPartyData
  */
-import {deepAccess, isEmpty, isNumber, logWarn} from '../../src/utils.js';
-import {ORTB_MAP} from './config.js';
-import {submodule} from '../../src/hook.js';
-import {getCoreStorageManager} from '../../src/storageManager.js';
+import { config } from '../../src/config.js';
+import { isEmpty, isNumber, logWarn, deepAccess } from '../../src/utils.js';
+import { ORTB_MAP } from './config.js';
+import { submodule } from '../../src/hook.js';
+import { getStorageManager } from '../../src/storageManager.js';
 
-// TODO: do FPD modules need their own namespace?
-const STORAGE = getCoreStorageManager('FPDValidation');
+const STORAGE = getStorageManager();
 let optout;
 
 /**
@@ -192,16 +192,29 @@ export function validateFpd(fpd, path = '', parent = '') {
  * Run validation on global and bidder config data for ortb2
  */
 function runValidations(data) {
-  return {
-    global: validateFpd(data.global),
-    bidder: Object.fromEntries(Object.entries(data.bidder).map(([bidder, conf]) => [bidder, validateFpd(conf)]))
-  }
+  let conf = validateFpd(data);
+
+  let bidderDuplicate = { ...config.getBidderConfig() };
+
+  Object.keys(bidderDuplicate).forEach(bidder => {
+    let modConf = Object.keys(bidderDuplicate[bidder]).reduce((res, key) => {
+      let valid = (key !== 'ortb2') ? bidderDuplicate[bidder][key] : validateFpd(bidderDuplicate[bidder][key]);
+
+      if (valid) res[key] = valid;
+
+      return res;
+    }, {});
+
+    if (Object.keys(modConf).length) config.setBidderConfig({ bidders: [bidder], config: modConf });
+  });
+
+  return conf;
 }
 
 /**
  * Sets default values to ortb2 if exists and adds currency and ortb2 setConfig callbacks on init
  */
-export function processFpd(fpdConf, data) {
+export function initSubmodule(fpdConf, data) {
   // Checks for existsnece of pubcid optout cookie/storage
   // if exists, filters user data out
   optout = (STORAGE.cookiesAreEnabled() && STORAGE.getCookie('_pubcid_optout')) ||
@@ -214,7 +227,7 @@ export function processFpd(fpdConf, data) {
 export const validationSubmodule = {
   name: 'validation',
   queue: 1,
-  processFpd
+  init: initSubmodule
 }
 
 submodule('firstPartyData', validationSubmodule)

@@ -209,8 +209,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -222,8 +221,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -235,8 +233,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -248,8 +245,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -261,8 +257,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -274,8 +269,7 @@ describe('SSPBC adapter', function () {
       gdprConsent,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -286,8 +280,7 @@ describe('SSPBC adapter', function () {
       bids: bids_test,
       refererInfo: {
         reachedTop: true,
-        page: 'https://test.site.pl/',
-        domain: 'test.site.pl',
+        referer: 'https://test.site.pl/',
         stack: ['https://test.site.pl/'],
       }
     };
@@ -518,7 +511,7 @@ describe('SSPBC adapter', function () {
     });
 
     it('should send page url from refererInfo', function () {
-      expect(payload.site.page).to.equal(bidRequest.refererInfo.page);
+      expect(payload.site.page).to.equal(bidRequest.refererInfo.referer);
     });
 
     it('should send gdpr data', function () {
@@ -557,7 +550,6 @@ describe('SSPBC adapter', function () {
       const nativeAssets = payloadNative.imp && payloadNative.imp[0].native.request;
 
       expect(payloadNative.imp.length).to.equal(1);
-
       expect(nativeAssets).to.contain('{"id":0,"required":true,"title":{"len":80}}');
       expect(nativeAssets).to.contain('{"id":2,"required":true,"img":{"type":1,"w":50,"h":50}}');
       expect(nativeAssets).to.contain('{"id":3,"required":true,"img":{"type":3,"w":150,"h":50}}');
@@ -611,14 +603,14 @@ describe('SSPBC adapter', function () {
 
       expect(result.length).to.equal(bids.length);
       expect(resultSingle.length).to.equal(1);
-      expect(resultSingle[0]).to.have.keys('ad', 'cpm', 'width', 'height', 'bidderCode', 'mediaType', 'meta', 'requestId', 'creativeId', 'currency', 'netRevenue', 'ttl', 'vurls');
+      expect(resultSingle[0]).to.have.keys('ad', 'cpm', 'width', 'height', 'bidderCode', 'mediaType', 'meta', 'requestId', 'creativeId', 'currency', 'netRevenue', 'ttl');
     });
 
     it('should create bid from OneCode (parameter-less) request, if response contains siteId', function () {
       let resultOneCode = spec.interpretResponse(serverResponseOneCode, requestOneCode);
 
       expect(resultOneCode.length).to.equal(1);
-      expect(resultOneCode[0]).to.have.keys('ad', 'cpm', 'width', 'height', 'bidderCode', 'mediaType', 'meta', 'requestId', 'creativeId', 'currency', 'netRevenue', 'ttl', 'vurls');
+      expect(resultOneCode[0]).to.have.keys('ad', 'cpm', 'width', 'height', 'bidderCode', 'mediaType', 'meta', 'requestId', 'creativeId', 'currency', 'netRevenue', 'ttl');
     });
 
     it('should not create bid from OneCode (parameter-less) request, if response does not contain siteId', function () {
@@ -649,7 +641,7 @@ describe('SSPBC adapter', function () {
       expect(resultVideo.length).to.equal(1);
 
       let videoBid = resultVideo[0];
-      expect(videoBid).to.have.keys('adType', 'bidderCode', 'cpm', 'creativeId', 'currency', 'width', 'height', 'meta', 'mediaType', 'netRevenue', 'requestId', 'ttl', 'vastContent', 'vastXml', 'vastUrl', 'vurls');
+      expect(videoBid).to.have.keys('adType', 'bidderCode', 'cpm', 'creativeId', 'currency', 'width', 'height', 'meta', 'mediaType', 'netRevenue', 'requestId', 'ttl', 'vastContent', 'vastXml', 'vastUrl');
       expect(videoBid.adType).to.equal('instream');
       expect(videoBid.mediaType).to.equal('video');
       expect(videoBid.vastXml).to.match(/^<\?xml.*<\/VAST>$/);
@@ -663,8 +655,8 @@ describe('SSPBC adapter', function () {
       expect(resultNative.length).to.equal(1);
 
       let nativeBid = resultNative[0];
-      expect(nativeBid).to.have.keys('bidderCode', 'cpm', 'creativeId', 'currency', 'width', 'height', 'meta', 'mediaType', 'netRevenue', 'requestId', 'ttl', 'native', 'vurls');
-      expect(nativeBid.native).to.have.keys('image', 'icon', 'title', 'sponsoredBy', 'body', 'clickUrl', 'impressionTrackers', 'javascriptTrackers', 'clickTrackers');
+      expect(nativeBid).to.have.keys('bidderCode', 'cpm', 'creativeId', 'currency', 'width', 'height', 'meta', 'mediaType', 'netRevenue', 'requestId', 'ttl', 'native');
+      expect(nativeBid.native).to.have.keys('image', 'icon', 'title', 'sponsoredBy', 'body', 'clickUrl', 'impressionTrackers', 'javascriptTrackers');
     });
   });
 
@@ -679,8 +671,8 @@ describe('SSPBC adapter', function () {
     });
 
     it('should send no syncs, if frame sync is not allowed', function () {
-      expect(syncResultImage).to.have.length(0);
-      expect(syncResultNone).to.have.length(0);
+      expect(syncResultImage).to.have.length(0); ;
+      expect(syncResultNone).to.have.length(0); ;
     });
   });
 

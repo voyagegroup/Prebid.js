@@ -1,17 +1,11 @@
 
-const path = require('path');
-const _ = require('lodash');
-const resolveFrom = require('resolve-from');
-const MODULES_PATH = path.resolve(__dirname, '../../modules');
-
-function isInDirectory(filename, dir) {
-  const rel = path.relative(dir, filename);
-  return rel && !rel.startsWith('..') && !path.isAbsolute(rel);
-}
+let path = require('path');
+let _ = require('lodash');
+let resolveFrom = require('resolve-from');
 
 function flagErrors(context, node, importPath) {
   let absFileDir = path.dirname(context.getFilename());
-  let absImportPath = importPath.startsWith('.') ? path.resolve(absFileDir, importPath) : require.resolve(importPath);
+  let absImportPath = path.resolve(absFileDir, importPath);
 
   try {
     resolveFrom(absFileDir, importPath);
@@ -26,9 +20,16 @@ function flagErrors(context, node, importPath) {
   ) {
     context.report(node, `import "${importPath}" not in import whitelist`);
   } else {
-    // do not allow cross-module imports
-    if (isInDirectory(absImportPath, MODULES_PATH) && (!isInDirectory(absImportPath, absFileDir) || absFileDir === MODULES_PATH)) {
-      context.report(node, `import "${importPath}": importing from modules is not allowed`);
+    let absModulePath = path.resolve(__dirname, '../../modules');
+
+    // don't allow import of any files directly within modules folder or index.js files within modules' sub-folders
+    if (
+      path.dirname(absImportPath) === absModulePath || (
+        absImportPath.startsWith(absModulePath) &&
+        path.basename(absImportPath) === 'index.js'
+      )
+    ) {
+      context.report(node, `import "${importPath}" cannot require module entry point`);
     }
 
     // don't allow extension-less local imports

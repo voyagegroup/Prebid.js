@@ -2,7 +2,6 @@ import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, NATIVE} from '../src/mediaTypes.js';
 import {deepAccess, parseQueryStringParameters, parseSizesInput} from '../src/utils.js';
 import {includes} from '../src/polyfill.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'adnow';
 const ENDPOINT = 'https://n.ads3-adnow.com/a';
@@ -49,9 +48,6 @@ export const spec = {
    * @return {ServerRequest}
    */
   buildRequests(validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     return validBidRequests.map(req => {
       const mediaType = this._isBannerRequest(req) ? BANNER : NATIVE;
       const codeId = parseInt(req.params.codeId, 10);
@@ -67,7 +63,7 @@ export const spec = {
       if (mediaType === BANNER) {
         data.sizes = parseSizesInput(
           req.mediaTypes && req.mediaTypes.banner && req.mediaTypes.banner.sizes
-        ).join('|');
+        ).join('|')
       } else {
         data.width = data.height = 200;
 

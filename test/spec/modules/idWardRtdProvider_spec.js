@@ -45,11 +45,7 @@ describe('idWardRtdProvider', function() {
         }
       };
 
-      const bidConfig = {
-        ortb2Fragments: {
-          global: {}
-        }
-      };
+      const bidConfig = {};
 
       const rtdUserObj1 = {
         name: 'id-ward.com',
@@ -69,8 +65,9 @@ describe('idWardRtdProvider', function() {
       getDataFromLocalStorageStub.withArgs('cohort_ids')
         .returns(JSON.stringify(['TCZPQOWPEJG3MJOTUQUF793A', '93SUG3H540WBJMYNT03KX8N3']));
 
+      expect(config.getConfig().ortb2).to.be.undefined;
       getRealTimeData(bidConfig, () => {}, rtdConfig, {});
-      expect(bidConfig.ortb2Fragments.global.user.data).to.deep.include.members([rtdUserObj1]);
+      expect(config.getConfig().ortb2.user.data).to.deep.include.members([rtdUserObj1]);
     });
 
     it('do not set rtd if local storage empty', function() {

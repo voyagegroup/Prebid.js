@@ -1,8 +1,6 @@
 import { logMessage, logWarn, logError, logInfo } from '../src/utils.js';
-import {getGlobal} from '../src/prebidGlobal.js';
 
 const MODULE_NAME = 'express';
-const pbjsInstance = getGlobal();
 
 /**
  * Express Module
@@ -14,7 +12,7 @@ const pbjsInstance = getGlobal();
  *
  * @param {Object[]} [adUnits = pbjs.adUnits] - an array of adUnits for express to operate on.
  */
-pbjsInstance.express = function(adUnits = pbjsInstance.adUnits) {
+$$PREBID_GLOBAL$$.express = function(adUnits = $$PREBID_GLOBAL$$.adUnits) {
   logMessage('loading ' + MODULE_NAME);
 
   if (adUnits.length === 0) {
@@ -140,10 +138,10 @@ pbjsInstance.express = function(adUnits = pbjsInstance.adUnits) {
         }
 
         if (adUnits.length) {
-          pbjsInstance.requestBids({
+          $$PREBID_GLOBAL$$.requestBids({
             adUnits: adUnits,
             bidsBackHandler: function () {
-              pbjsInstance.setTargetingForGPTAsync();
+              $$PREBID_GLOBAL$$.setTargetingForGPTAsync();
               fGptRefresh.apply(pads(), [
                 adUnits.map(function (adUnit) {
                   return gptSlotCache[adUnit.code];
@@ -170,10 +168,10 @@ pbjsInstance.express = function(adUnits = pbjsInstance.adUnits) {
       }
 
       if (adUnits.length) {
-        pbjsInstance.requestBids({
+        $$PREBID_GLOBAL$$.requestBids({
           adUnits: adUnits,
           bidsBackHandler: function () {
-            pbjsInstance.setTargetingForGPTAsync();
+            $$PREBID_GLOBAL$$.setTargetingForGPTAsync();
             fGptRefresh.apply(pads(), [
               adUnits.map(function (adUnit) {
                 return gptSlotCache[adUnit.code];

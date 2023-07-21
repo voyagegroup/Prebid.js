@@ -59,14 +59,14 @@ function onAuctionInitEvent(auctionInit) {
   }, SOURCE));
 }
 
-function getTargetingData(adUnitCodes, config, consent, auction) {
-  const adUnits = getAdUnits(auction.adUnits, adUnitCodes);
+function getTargetingData(adUnitCode) {
+  const adUnits = getAdUnits(undefined, adUnitCode);
   let targetingData = {};
   if (window.mnjs.loaded && isFn(window.mnjs.getTargetingData)) {
-    targetingData = window.mnjs.getTargetingData(adUnitCodes, adUnits, SOURCE) || {};
+    targetingData = window.mnjs.getTargetingData(adUnitCode, adUnits, SOURCE) || {};
   }
   const targeting = {};
-  adUnitCodes.forEach(adUnitCode => {
+  adUnitCode.forEach(adUnitCode => {
     targeting[adUnitCode] = targeting[adUnitCode] || {};
     targetingData[adUnitCode] = targetingData[adUnitCode] || {};
     targeting[adUnitCode] = {

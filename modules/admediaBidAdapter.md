@@ -1,35 +1,42 @@
 # Overview
 
-**Module Name**: Admedia Bidder Adapter
-**Module Type**: Bidder Adapter
-**Maintainer**:  developers@admedia.com
+```
+Module Name: Admedia Bidder Adapter
+Module Type: Bidder Adapter
+Maintainer: developers@admedia.com
+```
 
 # Description
 
-Module that connects to Admedia's bidder for bids.
+Admedia Bidder Adapter for Prebid.js. 
+Only Banner format is supported.
 
 # Test Parameters
 ```
-var adUnits = [
-	   {
-		   code: 'ad-div',
-		   mediaTypes: {
-			   banner: {
-				   sizes: [[300, 250]],
-			   }
-		   },
-		bids: [{
-
-			bidder: 'admedia',
-			params: {
-				placementId: '782332',
-				aid: '86858',
-			},
-			refererInfo: {
-				page: "http://addreferrerhere.com"
-			}
-
-		}]
-	   } 
-];
+    var adUnits = [
+       {
+           code: 'test-div-0',
+           sizes: [[300, 250]],  // a display size
+           bids: [
+               {
+                    bidder: 'admedia',
+                    params: {
+                        aid: 86858
+                    }
+               }
+           ]
+       },
+       {
+           code: 'test-div-1',
+           sizes: [[300, 50]],   // a mobile size
+           bids: [
+               {
+                    bidder: 'admedia',
+                    params: {
+                        aid: 86858
+                    }
+               }
+           ]
+       }
+    ];
 ```

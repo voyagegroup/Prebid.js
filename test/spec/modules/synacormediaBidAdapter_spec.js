@@ -183,14 +183,6 @@ describe('synacormediaBidAdapter ', function () {
       }
     };
 
-    let bidderRequestWithTimeout = {
-      auctionId: 'xyz123',
-      refererInfo: {
-        referer: 'https://test.com/foo/bar'
-      },
-      timeout: 3000
-    };
-
     let bidderRequestWithCCPA = {
       auctionId: 'xyz123',
       refererInfo: {
@@ -301,16 +293,6 @@ describe('synacormediaBidAdapter ', function () {
       expect(reqVideo.data).to.exist.and.to.be.an('object');
       expect(reqVideo.data.id).to.equal('VideoAuctionId124');
       expect(reqVideo.data.imp).to.eql([expectedDataVideo1]);
-    });
-
-    it('should return no tmax', function () {
-      let req = spec.buildRequests([validBidRequest], bidderRequest);
-      expect(req.data).to.not.have.property('tmax');
-    });
-
-    it('should return tmax equal to callback timeout', function () {
-      let req = spec.buildRequests([validBidRequest], bidderRequestWithTimeout);
-      expect(req.data.tmax).to.eql(bidderRequestWithTimeout.timeout);
     });
 
     it('should return multiple bids when multiple valid requests with the same seatId are used', function () {

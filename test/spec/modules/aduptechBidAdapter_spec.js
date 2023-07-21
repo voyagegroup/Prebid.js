@@ -77,41 +77,59 @@ describe('AduptechBidAdapter', () => {
       });
 
       it('should handle empty or missing data', () => {
-        expect(internal.extractPageUrl(null)).to.equal(utils.getWindowSelf().location.href);
-        expect(internal.extractPageUrl({})).to.equal(utils.getWindowSelf().location.href);
-        expect(internal.extractPageUrl({ refererInfo: {} })).to.equal(utils.getWindowSelf().location.href);
-        expect(internal.extractPageUrl({ refererInfo: { canonicalUrl: null } })).to.equal(utils.getWindowSelf().location.href);
-        expect(internal.extractPageUrl({ refererInfo: { canonicalUrl: '' } })).to.equal(utils.getWindowSelf().location.href);
+        expect(internal.extractPageUrl(null)).to.equal(utils.getWindowTop().location.href);
+        expect(internal.extractPageUrl({})).to.equal(utils.getWindowTop().location.href);
+        expect(internal.extractPageUrl({ refererInfo: {} })).to.equal(utils.getWindowTop().location.href);
+        expect(internal.extractPageUrl({ refererInfo: { canonicalUrl: null } })).to.equal(utils.getWindowTop().location.href);
+        expect(internal.extractPageUrl({ refererInfo: { canonicalUrl: '' } })).to.equal(utils.getWindowTop().location.href);
       });
 
-      it('should use bidderRequest.refererInfo.page', () => {
+      it('should use "pageUrl" from config', () => {
+        config.setConfig({ pageUrl: 'http://page.url' });
+
+        expect(internal.extractPageUrl({})).to.equal(config.getConfig('pageUrl'));
+      });
+
+      it('should use bidderRequest.refererInfo.canonicalUrl', () => {
         const bidderRequest = {
           refererInfo: {
-            page: 'http://canonical.url'
+            canonicalUrl: 'http://canonical.url'
           }
         };
 
-        expect(internal.extractPageUrl(bidderRequest)).to.equal(bidderRequest.refererInfo.page);
+        expect(internal.extractPageUrl(bidderRequest)).to.equal(bidderRequest.refererInfo.canonicalUrl);
+      });
+
+      it('should prefer bidderRequest.refererInfo.canonicalUrl over "pageUrl" from config', () => {
+        const bidderRequest = {
+          refererInfo: {
+            canonicalUrl: 'http://canonical.url'
+          }
+        };
+
+        config.setConfig({ pageUrl: 'http://page.url' });
+
+        expect(internal.extractPageUrl(bidderRequest)).to.equal(bidderRequest.refererInfo.canonicalUrl);
       });
     });
 
     describe('extractReferrer', () => {
       it('should handle empty or missing data', () => {
-        expect(internal.extractReferrer(null)).to.equal(utils.getWindowSelf().document.referrer);
-        expect(internal.extractReferrer({})).to.equal(utils.getWindowSelf().document.referrer);
-        expect(internal.extractReferrer({ refererInfo: {} })).to.equal(utils.getWindowSelf().document.referrer);
-        expect(internal.extractReferrer({ refererInfo: { referer: null } })).to.equal(utils.getWindowSelf().document.referrer);
-        expect(internal.extractReferrer({ refererInfo: { referer: '' } })).to.equal(utils.getWindowSelf().document.referrer);
+        expect(internal.extractReferrer(null)).to.equal(utils.getWindowTop().document.referrer);
+        expect(internal.extractReferrer({})).to.equal(utils.getWindowTop().document.referrer);
+        expect(internal.extractReferrer({ refererInfo: {} })).to.equal(utils.getWindowTop().document.referrer);
+        expect(internal.extractReferrer({ refererInfo: { referer: null } })).to.equal(utils.getWindowTop().document.referrer);
+        expect(internal.extractReferrer({ refererInfo: { referer: '' } })).to.equal(utils.getWindowTop().document.referrer);
       });
 
-      it('hould use bidderRequest.refererInfo.ref', () => {
+      it('hould use bidderRequest.refererInfo.referer', () => {
         const bidderRequest = {
           refererInfo: {
-            ref: 'foobar'
+            referer: 'foobar'
           }
         };
 
-        expect(internal.extractReferrer(bidderRequest)).to.equal(bidderRequest.refererInfo.ref);
+        expect(internal.extractReferrer(bidderRequest)).to.equal(bidderRequest.refererInfo.referer);
       });
     });
 
@@ -179,54 +197,6 @@ describe('AduptechBidAdapter', () => {
         };
 
         expect(internal.extractNativeConfig(bidRequest)).to.deep.equal(bidRequest.mediaTypes.native);
-      });
-    });
-
-    describe('getFloor', () => {
-      let bidRequest;
-
-      beforeEach(() => {
-        bidRequest = {
-          getFloor: sinon.stub()
-        };
-      });
-
-      it('should handle empty or invalid bidRequest', () => {
-        expect(internal.getFloor(null)).to.be.null;
-        expect(internal.getFloor({})).to.be.null;
-        expect(internal.getFloor({ getFloor: 'foo' })).to.be.null;
-      });
-
-      it('should detect floor via getFloor()', () => {
-        const result = {
-          floor: 1.11,
-          currency: 'USD'
-        };
-
-        const options = {
-          mediaType: BANNER,
-          size: '*'
-        }
-
-        bidRequest.getFloor.returns(result);
-
-        expect(internal.getFloor(bidRequest, options)).to.deep.equal(result);
-        expect(bidRequest.getFloor.calledOnceWith(options)).to.be.true;
-      });
-
-      it('should handle empty, invalid or faulty getFloor() results', () => {
-        bidRequest.getFloor
-          .onCall(0).returns({})
-          .onCall(1).returns({ floor: 'foo' })
-          .onCall(2).returns('bar')
-          .onCall(3).throws(new Error('baz'));
-
-        expect(internal.getFloor(bidRequest, {})).to.be.null;
-        expect(internal.getFloor(bidRequest, {})).to.be.null;
-        expect(internal.getFloor(bidRequest, {})).to.be.null;
-        expect(internal.getFloor(bidRequest, {})).to.be.null;
-
-        expect(bidRequest.getFloor.callCount).to.equal(4);
       });
     });
 
@@ -456,8 +426,8 @@ describe('AduptechBidAdapter', () => {
         const bidderRequest = {
           auctionId: 'auctionId123',
           refererInfo: {
-            page: 'http://crazy.canonical.url',
-            ref: 'http://crazy.referer.url'
+            canonicalUrl: 'http://crazy.canonical.url',
+            referer: 'http://crazy.referer.url'
           },
           gdprConsent: {
             consentString: 'consentString123',
@@ -527,8 +497,8 @@ describe('AduptechBidAdapter', () => {
             method: ENDPOINT_METHOD,
             data: {
               auctionId: bidderRequest.auctionId,
-              pageUrl: bidderRequest.refererInfo.page,
-              referrer: bidderRequest.refererInfo.ref,
+              pageUrl: bidderRequest.refererInfo.canonicalUrl,
+              referrer: bidderRequest.refererInfo.referer,
               gdpr: {
                 consentString: bidderRequest.gdprConsent.consentString,
                 consentRequired: bidderRequest.gdprConsent.gdprApplies
@@ -556,8 +526,8 @@ describe('AduptechBidAdapter', () => {
             method: ENDPOINT_METHOD,
             data: {
               auctionId: bidderRequest.auctionId,
-              pageUrl: bidderRequest.refererInfo.page,
-              referrer: bidderRequest.refererInfo.ref,
+              pageUrl: bidderRequest.refererInfo.canonicalUrl,
+              referrer: bidderRequest.refererInfo.referer,
               gdpr: {
                 consentString: bidderRequest.gdprConsent.consentString,
                 consentRequired: bidderRequest.gdprConsent.gdprApplies
@@ -574,94 +544,6 @@ describe('AduptechBidAdapter', () => {
             }
           }
         ]);
-      });
-
-      it('should build a request with floorPrices', () => {
-        const bidderRequest = {
-          auctionId: 'auctionId123',
-          refererInfo: {
-            page: 'http://crazy.canonical.url',
-            ref: 'http://crazy.referer.url'
-          },
-          gdprConsent: {
-            consentString: 'consentString123',
-            gdprApplies: true
-          }
-        };
-
-        const bidRequest = {
-          bidId: 'bidId1',
-          adUnitCode: 'adUnitCode1',
-          transactionId: 'transactionId1',
-          mediaTypes: {
-            banner: {
-              sizes: [[100, 200], [300, 400]]
-            },
-            native: {
-              image: {
-                required: true
-              },
-            }
-          },
-          params: {
-            publisher: 'publisher1',
-            placement: 'placement1'
-          },
-          getFloor: sinon.stub()
-            .onCall(0).returns({ floor: 1.11, currency: 'USD' })
-            .onCall(1).returns({ floor: 2.22, currency: 'EUR' })
-            .onCall(2).returns({ floor: 3.33, currency: 'USD' })
-            .onCall(3).returns({ floor: 4.44, currency: 'GBP' })
-            .onCall(4).returns({ floor: 5.55, currency: 'EUR' })
-        };
-
-        expect(spec.buildRequests([bidRequest], bidderRequest)).to.deep.equal([
-          {
-            url: internal.buildEndpointUrl(bidRequest.params.publisher),
-            method: ENDPOINT_METHOD,
-            data: {
-              auctionId: bidderRequest.auctionId,
-              pageUrl: bidderRequest.refererInfo.page,
-              referrer: bidderRequest.refererInfo.ref,
-              gdpr: {
-                consentString: bidderRequest.gdprConsent.consentString,
-                consentRequired: bidderRequest.gdprConsent.gdprApplies
-              },
-              imp: [
-                {
-                  bidId: bidRequest.bidId,
-                  transactionId: bidRequest.transactionId,
-                  adUnitCode: bidRequest.adUnitCode,
-                  params: bidRequest.params,
-                  banner: {
-                    sizes: [
-                      [100, 200, 1.11, 'USD'],
-                      [300, 400, 2.22, 'EUR'],
-                    ],
-                    floorPrice: 3.33,
-                    floorCurrency: 'USD'
-                  },
-                  native: {
-                    image: {
-                      required: true
-                    },
-                    floorPrice: 4.44,
-                    floorCurrency: 'GBP'
-                  },
-                  floorPrice: 5.55,
-                  floorCurrency: 'EUR'
-                }
-              ]
-            }
-          }
-        ]);
-
-        expect(bidRequest.getFloor.callCount).to.equal(5);
-        expect(bidRequest.getFloor.getCall(0).calledWith({ mediaType: BANNER, size: bidRequest.mediaTypes.banner.sizes[0] })).to.be.true;
-        expect(bidRequest.getFloor.getCall(1).calledWith({ mediaType: BANNER, size: bidRequest.mediaTypes.banner.sizes[1] })).to.be.true;
-        expect(bidRequest.getFloor.getCall(2).calledWith({ mediaType: BANNER, size: '*' })).to.be.true;
-        expect(bidRequest.getFloor.getCall(3).calledWith({ mediaType: NATIVE, size: '*' })).to.be.true;
-        expect(bidRequest.getFloor.getCall(4).calledWith({ mediaType: '*', size: '*' })).to.be.true;
       });
     });
 

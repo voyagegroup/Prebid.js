@@ -1,4 +1,5 @@
 import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { config } from '../src/config.js';
 import { BANNER } from '../src/mediaTypes.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {
@@ -11,7 +12,10 @@ import {
 
 const GVLID = 1012;
 const BIDDER_CODE = 'glimpse';
-const storageManager = getStorageManager({bidderCode: BIDDER_CODE});
+const storageManager = getStorageManager({
+  gvlid: GVLID,
+  bidderCode: BIDDER_CODE,
+});
 const ENDPOINT = 'https://market.glimpsevault.io/public/v1/prebid';
 const LOCAL_STORAGE_KEY = {
   vault: {
@@ -45,7 +49,7 @@ export const spec = {
     const auth = getVaultJwt();
     const referer = getReferer(bidderRequest);
     const imp = validBidRequests.map(processBidRequest);
-    const fpd = getFirstPartyData(bidderRequest.ortb2);
+    const fpd = getFirstPartyData();
 
     const data = {
       auth,
@@ -91,14 +95,13 @@ function getVaultJwt() {
 }
 
 function getReferer(bidderRequest) {
-  // TODO: is 'page' the right value here?
-  return bidderRequest?.refererInfo?.page || '';
+  return bidderRequest?.refererInfo?.referer || '';
 }
 
 function buildQuery(bidderRequest) {
   let url = appendQueryParam(ENDPOINT, 'ver', '$prebid.version$');
 
-  const timeout = bidderRequest.timeout;
+  const timeout = config.getConfig('bidderTimeout');
   url = appendQueryParam(url, 'tmax', timeout);
 
   if (gdprApplies(bidderRequest)) {
@@ -157,8 +160,8 @@ function normalizeSizes(sizes) {
   return sizes;
 }
 
-function getFirstPartyData(ortb2) {
-  let fpd = ortb2 || {};
+function getFirstPartyData() {
+  let fpd = config.getConfig('ortb2') || {};
   optimizeObject(fpd);
   return fpd;
 }

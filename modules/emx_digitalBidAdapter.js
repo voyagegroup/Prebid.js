@@ -7,13 +7,13 @@ import {
   isPlainObject,
   isStr,
   logError,
-  logWarn
+  logWarn,
+  parseUrl
 } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, VIDEO} from '../src/mediaTypes.js';
 import {Renderer} from '../src/Renderer.js';
 import {find, includes} from '../src/polyfill.js';
-import {parseDomain} from '../src/refererDetection.js';
 
 const BIDDER_CODE = 'emx_digital';
 const ENDPOINT = 'hb.emxdgt.com';
@@ -140,12 +140,19 @@ export const emxAdapter = {
       logError('emx_digitalBidAdapter', 'error', err);
     }
   },
+  getReferrer: () => {
+    try {
+      return window.top.document.referrer;
+    } catch (err) {
+      return document.referrer;
+    }
+  },
   getSite: (refInfo) => {
-    // TODO: do the fallbacks make sense?
+    let url = parseUrl(refInfo.referer);
     return {
-      domain: refInfo.domain || parseDomain(refInfo.topmostLocation),
-      page: refInfo.page || refInfo.topmostLocation,
-      ref: refInfo.ref || window.document.referrer
+      domain: url.hostname,
+      page: refInfo.referer,
+      ref: emxAdapter.getReferrer()
     }
   },
   getGdpr: (bidRequests, emxData) => {
@@ -287,7 +294,7 @@ export const spec = {
     emxData = emxAdapter.getGdpr(bidderRequest, Object.assign({}, emxData));
     emxData = emxAdapter.getSupplyChain(bidderRequest, Object.assign({}, emxData));
     if (bidderRequest && bidderRequest.uspConsent) {
-      emxData.us_privacy = bidderRequest.uspConsent;
+      emxData.us_privacy = bidderRequest.uspConsent
     }
 
     // adding eid support
@@ -354,22 +361,15 @@ export const spec = {
   },
   getUserSyncs: function (syncOptions, responses, gdprConsent, uspConsent) {
     const syncs = [];
-    const consentParams = [];
     if (syncOptions.iframeEnabled) {
       let url = 'https://biddr.brealtime.com/check.html';
       if (gdprConsent && typeof gdprConsent.consentString === 'string') {
         // add 'gdpr' only if 'gdprApplies' is defined
         if (typeof gdprConsent.gdprApplies === 'boolean') {
-          consentParams.push(`gdpr=${Number(gdprConsent.gdprApplies)}&gdpr_consent=${gdprConsent.consentString}`);
+          url += `?gdpr=${Number(gdprConsent.gdprApplies)}&gdpr_consent=${gdprConsent.consentString}`;
         } else {
-          consentParams.push(`?gdpr_consent=${gdprConsent.consentString}`);
+          url += `?gdpr_consent=${gdprConsent.consentString}`;
         }
-      }
-      if (uspConsent && typeof uspConsent.consentString === 'string') {
-        consentParams.push(`usp=${uspConsent.consentString}`);
-      }
-      if (consentParams.length > 0) {
-        url = url + '?' + consentParams.join('&');
       }
       syncs.push({
         type: 'iframe',

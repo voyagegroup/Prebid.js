@@ -38,7 +38,7 @@ describe('marsmedia adapter tests', function () {
     };
     this.defaultBidderRequest = {
       'refererInfo': {
-        'ref': 'Reference Page',
+        'referer': 'Reference Page',
         'stack': [
           'aodomain.dvl',
           'page.dvl'

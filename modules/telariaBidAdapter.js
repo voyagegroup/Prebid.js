@@ -247,9 +247,8 @@ function generateUrl(bid, bidderRequest) {
         }
       }
 
-      if (bidderRequest.refererInfo && bidderRequest.refererInfo.page) {
-        // TODO: is 'page' the right value here?
-        url += (`&referrer=${encodeURIComponent(bidderRequest.refererInfo.page)}`);
+      if (bidderRequest.refererInfo && bidderRequest.refererInfo.referer) {
+        url += (`&referrer=${encodeURIComponent(bidderRequest.refererInfo.referer)}`);
       }
     }
 

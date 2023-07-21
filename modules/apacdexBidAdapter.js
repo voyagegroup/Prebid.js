@@ -1,8 +1,6 @@
 import { deepAccess, isPlainObject, isArray, replaceAuctionPrice, isFn } from '../src/utils.js';
 import { config } from '../src/config.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import {hasPurpose1Consent} from '../src/utils/gpdr.js';
-import {parseDomain} from '../src/refererDetection.js';
 const BIDDER_CODE = 'apacdex';
 const ENDPOINT = 'https://useast.quantumdex.io/auction/pbjs'
 const USERSYNC = 'https://sync.quantumdex.io/usersync/pbjs'
@@ -103,10 +101,9 @@ export const spec = {
 
     var pageUrl = _extractTopWindowUrlFromBidderRequest(bidderRequest);
     payload.site = {};
-    payload.site.page = pageUrl;
+    payload.site.page = pageUrl
     payload.site.referrer = _extractTopWindowReferrerFromBidderRequest(bidderRequest);
-    // TODO: does it make sense to fall back to window.location for the domain?
-    payload.site.hostname = bidderRequest.refererInfo?.domain || parseDomain(pageUrl);
+    payload.site.hostname = getDomain(pageUrl);
 
     // Apply GDPR parameters to request.
     if (bidderRequest && bidderRequest.gdprConsent) {
@@ -124,12 +121,12 @@ export const spec = {
 
     // Apply schain.
     if (schain) {
-      payload.schain = schain;
+      payload.schain = schain
     }
 
     // Apply eids.
     if (eids) {
-      payload.eids = eids;
+      payload.eids = eids
     }
 
     // Apply geo
@@ -286,8 +283,18 @@ function _getDoNotTrack() {
  * @returns {string}
  */
 function _extractTopWindowUrlFromBidderRequest(bidderRequest) {
-  // TODO: does it make sense to fall back to window.location?
-  return bidderRequest?.refererInfo?.page || window.location.href;
+  if (config.getConfig('pageUrl')) {
+    return config.getConfig('pageUrl');
+  }
+  if (deepAccess(bidderRequest, 'refererInfo.referer')) {
+    return bidderRequest.refererInfo.referer;
+  }
+
+  try {
+    return window.top.location.href;
+  } catch (e) {
+    return window.location.href;
+  }
 }
 
 /**
@@ -297,8 +304,34 @@ function _extractTopWindowUrlFromBidderRequest(bidderRequest) {
  * @returns {string}
  */
 function _extractTopWindowReferrerFromBidderRequest(bidderRequest) {
-  // TODO: does it make sense to fall back to window.document.referrer?
-  return bidderRequest?.refererInfo?.ref || window.document.referrer;
+  if (bidderRequest && deepAccess(bidderRequest, 'refererInfo.referer')) {
+    return bidderRequest.refererInfo.referer;
+  }
+
+  try {
+    return window.top.document.referrer;
+  } catch (e) {
+    return window.document.referrer;
+  }
+}
+
+/**
+ * Extracts the domain from given page url
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function getDomain(pageUrl) {
+  if (config.getConfig('publisherDomain')) {
+    var publisherDomain = config.getConfig('publisherDomain');
+    return publisherDomain.replace('http://', '').replace('https://', '').replace('www.', '').split(/[/?#:]/)[0];
+  }
+
+  if (!pageUrl) {
+    return pageUrl;
+  }
+
+  return pageUrl.replace('http://', '').replace('https://', '').replace('www.', '').split(/[/?#:]/)[0];
 }
 
 /**
@@ -343,6 +376,16 @@ function getBidFloor(bid) {
     return floor.floor;
   }
   return null;
+}
+
+function hasPurpose1Consent(gdprConsent) {
+  let result = true;
+  if (gdprConsent) {
+    if (gdprConsent.gdprApplies && gdprConsent.apiVersion === 2) {
+      result = !!(deepAccess(gdprConsent, 'vendorData.purpose.consents.1') === true);
+    }
+  }
+  return result;
 }
 
 registerBidder(spec);

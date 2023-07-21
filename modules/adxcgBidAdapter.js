@@ -2,22 +2,21 @@
 'use strict';
 
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
+import {NATIVE, BANNER, VIDEO} from '../src/mediaTypes.js';
 import {
+  mergeDeep,
   _map,
   deepAccess,
-  deepSetValue,
   getDNT,
+  parseSizesInput,
+  deepSetValue,
+  isStr,
   isArray,
   isPlainObject,
-  isStr,
-  mergeDeep,
-  parseSizesInput,
-  replaceAuctionPrice,
-  triggerPixel
+  parseUrl,
+  replaceAuctionPrice, triggerPixel
 } from '../src/utils.js';
 import {config} from '../src/config.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const { getConfig } = config;
 
@@ -66,12 +65,9 @@ export const spec = {
     return !!(adzoneid);
   },
   buildRequests: (validBidRequests, bidderRequest) => {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     let app, site;
 
-    const commonFpd = bidderRequest.ortb2 || {};
+    const commonFpd = getConfig('ortb2') || {};
     let { user } = commonFpd;
 
     if (typeof getConfig('app') === 'object') {
@@ -86,8 +82,8 @@ export const spec = {
       }
 
       if (!site.page) {
-        site.page = bidderRequest.refererInfo.page;
-        site.domain = bidderRequest.refererInfo.domain;
+        site.page = bidderRequest.refererInfo.referer;
+        site.domain = parseUrl(bidderRequest.refererInfo.referer).hostname;
       }
     }
 
@@ -98,7 +94,7 @@ export const spec = {
     device.dnt = getDNT() ? 1 : 0;
     device.language = (navigator && navigator.language) ? navigator.language.split('-')[0] : '';
 
-    const tid = bidderRequest.auctionId;
+    const tid = validBidRequests[0].transactionId;
     const test = setOnAny(validBidRequests, 'params.test');
     const currency = getConfig('currency.adServerCurrency');
     const cur = currency && [ currency ];

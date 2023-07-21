@@ -2,7 +2,6 @@ import { parseUrl, isEmpty, isStr, triggerPixel } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import { config } from '../src/config.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'brave';
 const DEFAULT_CUR = 'USD';
@@ -39,9 +38,6 @@ export const spec = {
    * @return ServerRequest Info describing the request to the server.
    */
   buildRequests: (validBidRequests, bidderRequest) => {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     if (validBidRequests.length === 0 || !bidderRequest) return [];
 
     const endpointURL = ENDPOINT_URL.replace('hash', validBidRequests[0].params.placementId);
@@ -66,9 +62,23 @@ export const spec = {
       return impObject;
     });
 
-    // TODO: do these values make sense?
-    let page = bidderRequest.refererInfo.page || bidderRequest.refererInfo.topmostLocation;
-    let r = bidderRequest.refererInfo.ref;
+    let w = window;
+    let l = w.document.location.href;
+    let r = w.document.referrer;
+
+    let loopChecker = 0;
+    while (w !== w.parent) {
+      if (++loopChecker == 10) break;
+      try {
+        w = w.parent;
+        l = w.location.href;
+        r = w.document.referrer;
+      } catch (e) {
+        break;
+      }
+    }
+
+    let page = l || bidderRequest.refererInfo.referer;
 
     let data = {
       id: bidderRequest.bidderRequestId,
@@ -83,7 +93,7 @@ export const spec = {
         domain: parseUrl(page).hostname,
         page: page,
       },
-      tmax: bidderRequest.timeout,
+      tmax: bidderRequest.timeout || config.getConfig('bidderTimeout') || 500,
       imp
     };
 

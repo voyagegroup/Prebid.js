@@ -1,7 +1,6 @@
 import { config } from './config.js';
 import {logWarn, logInfo, isPlainObject, deepAccess, deepClone, getWindowTop} from './utils.js';
 import {includes} from './polyfill.js';
-import {BANNER} from './mediaTypes.js';
 
 let sizeConfig = [];
 
@@ -76,19 +75,22 @@ export function resolveStatus({labels = [], labelAll = false, activeLabels = []}
     } else {
       mediaTypes = {};
     }
+  } else {
+    mediaTypes = deepClone(mediaTypes);
   }
 
   let oldSizes = deepAccess(mediaTypes, 'banner.sizes');
   if (maps.shouldFilter && oldSizes) {
-    mediaTypes = deepClone(mediaTypes);
     mediaTypes.banner.sizes = oldSizes.filter(size => maps.sizesSupported[size]);
   }
 
+  let allMediaTypes = Object.keys(mediaTypes);
+
   let results = {
     active: (
-      !mediaTypes.hasOwnProperty(BANNER)
+      allMediaTypes.every(type => type !== 'banner')
     ) || (
-      deepAccess(mediaTypes, 'banner.sizes.length') > 0 && (
+      allMediaTypes.some(type => type === 'banner') && deepAccess(mediaTypes, 'banner.sizes.length') > 0 && (
         labels.length === 0 || (
           (!labelAll && (
             labels.some(label => maps.labels[label]) ||
@@ -109,7 +111,7 @@ export function resolveStatus({labels = [], labelAll = false, activeLabels = []}
     results.filterResults = {
       before: oldSizes,
       after: mediaTypes.banner.sizes
-    };
+    }
   }
 
   return results;

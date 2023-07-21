@@ -64,16 +64,12 @@ describe('AppierAdapter', function () {
         'auctionId': '1d1a030790a475',
       };
       const fakeBidRequests = [bid];
-      const fakeBidderRequest = {
-        refererInfo: {
-          legacy: {
-            'referer': 'fakeReferer',
-            'reachedTop': true,
-            'numIframes': 1,
-            'stack': []
-          }
-        }
-      };
+      const fakeBidderRequest = {refererInfo: {
+        'referer': 'fakeReferer',
+        'reachedTop': true,
+        'numIframes': 1,
+        'stack': []
+      }};
 
       const builtRequests = spec.buildRequests(fakeBidRequests, fakeBidderRequest);
       expect(builtRequests.length).to.equal(1);
@@ -81,7 +77,7 @@ describe('AppierAdapter', function () {
       expect(builtRequests[0].url).match(/v1\/prebid\/bid/);
       expect(builtRequests[0].data).deep.equal({
         'bids': fakeBidRequests,
-        'refererInfo': fakeBidderRequest.refererInfo.legacy,
+        'refererInfo': fakeBidderRequest.refererInfo,
         'version': ADAPTER_VERSION
       });
     });

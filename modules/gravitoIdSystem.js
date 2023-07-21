@@ -6,11 +6,9 @@
  */
 
 import { submodule } from '../src/hook.js';
-import {getStorageManager} from '../src/storageManager.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
+import { getStorageManager } from '../src/storageManager.js';
 
-const MODULE_NAME = 'gravitompId';
-export const storage = getStorageManager({moduleType: MODULE_TYPE_UID, moduleName: MODULE_NAME});
+export const storage = getStorageManager();
 
 export const cookieKey = 'gravitompId';
 
@@ -19,7 +17,7 @@ export const gravitoIdSystemSubmodule = {
   * used to link submodule with config
   * @type {string}
   */
-  name: MODULE_NAME,
+  name: 'gravitompId',
 
   /**
   * performs action to obtain id
@@ -41,18 +39,19 @@ export const gravitoIdSystemSubmodule = {
   * decode the stored id value for passing to bid requests
   * @function
   * @param { {gravitompId: string} } value
-  * @returns { {gravitompId: {string} } | undefined }
+  * @returns { {gravitompId: {id: string} } | undefined }
   */
   decode: function(value) {
     if (value && typeof value === 'object') {
-      var result = {};
+      const result = {};
       if (value.gravitompId) {
-        result = value.gravitompId
+        result.id = value.gravitompId
       }
       return {gravitompId: result};
     }
     return undefined;
   },
+
 }
 
 submodule('userId', gravitoIdSystemSubmodule);

@@ -11,7 +11,6 @@ import {
 } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER, NATIVE} from '../src/mediaTypes.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 import {find} from '../src/polyfill.js';
 
@@ -40,10 +39,7 @@ export const spec = {
    * @return ServerRequest Info describing the request to the server.
    */
   buildRequests: function (validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-    // TODO: is 'page' the right value here?
-    let topLocation = parseUrl(deepAccess(bidderRequest, 'refererInfo.page'));
+    let topLocation = parseUrl(deepAccess(bidderRequest, 'refererInfo.referer'));
 
     return validBidRequests.map((bidRequest) => {
       return {
@@ -69,6 +65,7 @@ export const spec = {
             }
           },
 
+          user: _getUser(validBidRequests),
           site: _getSite(bidRequest, topLocation),
           seller: _getSeller(bidRequest),
           device: _getDevice(bidRequest),
@@ -187,6 +184,22 @@ function _getNativeAssets(mediaTypeNative) {
   return NATIVE_ASSET_MAP
     .map(assetMap => _getAsset(mediaTypeNative, assetMap))
     .filter(asset => asset !== undefined);
+}
+
+function _getUser(requests) {
+  const id = deepAccess(requests, '0.userId.nextrollId');
+  if (id === undefined) {
+    return;
+  }
+
+  return {
+    ext: {
+      eid: [{
+        'source': 'nextroll',
+        id
+      }]
+    }
+  };
 }
 
 function _getFloor(bidRequest) {

@@ -1,4 +1,5 @@
 import { parseSizesInput } from '../src/utils.js';
+import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 
 const BIDDER_CODE = 'coinzilla';
@@ -38,8 +39,7 @@ export const spec = {
         width: width,
         height: height,
         bidId: bidRequest.bidId,
-        // TODO: is 'page' the right value here?
-        referer: bidderRequest.refererInfo.page,
+        referer: bidderRequest.refererInfo.referer,
       };
       return {
         method: 'POST',
@@ -77,7 +77,7 @@ export const spec = {
         dealId: dealId,
         currency: currency,
         netRevenue: netRevenue,
-        ttl: bidRequest.timeout,
+        ttl: config.getConfig('_bidderTimeout'),
         referrer: referrer,
         ad: response.ad,
         mediaType: response.mediaType,

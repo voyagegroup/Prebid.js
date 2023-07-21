@@ -14,10 +14,9 @@ Connects to Mediakeys demand source to fetch bids.
 
 ## Banner only Ad Unit
 
-The Mediakeys adapter accepts any valid OpenRTB Spec 2.5 property.
-
-```javascript
-var adUnits = [{
+```
+var adUnits = [
+{
     code: 'test',
     mediaTypes: {
         banner: {
@@ -28,26 +27,20 @@ var adUnits = [{
         bidder: 'mediakeys',
         params: {} // no params required.
     }]
-}]
+},
 ```
 
 ## Native only Ad Unit
 
 The Mediakeys adapter accepts two optional params for native requests. Please see the [OpenRTB Native Ads Specification](https://www.iab.com/wp-content/uploads/2018/03/OpenRTB-Native-Ads-Specification-Final-1.2.pdf) for valid values.
 
-```javascript
-var adUnits = [{
+```
+var adUnits = [
+{
     code: 'test',
     mediaTypes: {
         native: {
-            title: {
-                required: true,
-                len: 120
-            },
-            image: {
-                required: true,
-                sizes: [300, 250]
-            }
+            type: 'image',
         }
     },
     bids: [{
@@ -59,7 +52,7 @@ var adUnits = [{
             }
         }
     }]
-}]
+},
 ```
 
 ## Video only Ad Unit
@@ -68,65 +61,63 @@ The Mediakeys adapter accepts any valid openRTB 2.5 video property. Properties c
 
 ### Outstream context
 
-```javascript
-var adUnits = [{
+```
+var adUnits = [
+{
     code: 'test',
     mediaTypes: {
         video: {
             context: 'outstream',
-            playerSize: [1280, 720],
+            playerSize: [300, 250],
             // additional OpenRTB video params
             // placement: 2,
             // api: [1],
             // …
-            mimes: ['video/mp4'],
-            protocols: [2, 3],
-            skip: 0
         }
     },
     renderer: {
         url: 'https://acdn.adnxs.com/video/outstream/ANOutstreamVideo.js',
-        // the render method must fetch the vast xml document before displaying video
         render: function (bid) {
-            var adResponse = fetch(bid.vastUrl).then(resp => resp.text()).then(text => ({
-                ad: {
-                    video: {
-                        content: text,
-                        player_height: bid.playerHeight,
-                        player_width: bid.playerWidth
-                    }
-                }
-            }))
+            var bidReqConfig = pbjs.adUnits.find(bidReq => bidReq.bidId === bid.impid);
 
-            adResponse.then((content) => {
-                bid.renderer.push(() => {
-                    ANOutstreamVideo.renderAd({
-                        targetId: bid.adUnitCode,
-                        adResponse: content
+            if (bidReqConfig && bidReqConfig.mediaTypes && bidReqConfig.mediaTypes.video && bidReqConfig.mediaTypes.video.context === 'outstream') {
+                var adResponse = fetch(bid.vastUrl).then(resp => resp.text()).then(text => ({
+                    ad: {
+                        video: {
+                            content: text,
+                            player_width: bid.width || bidReqConfig.mediaTypes.video.playerSize[0],
+                            player_height: bid.height || bidReqConfig.mediaTypes.video.playerSize[1],
+                        }
+                    }
+                }))
+
+                adResponse.then((ad) => {
+                    bid.renderer.push(() => {
+                        ANOutstreamVideo.renderAd({
+                            targetId: bid.adUnitCode,
+                            adResponse: ad
+                        });
                     });
-                });
-            })
+                })
+            }
         }
     },
     bids: [{
         bidder: 'mediakeys',
         params: {
             video: {
-                // additional OpenRTB video params.
-                // will be merged with params defined at mediaTypes level
-                api: [1]
+                // additional OpenRTB video params. Will be merged with params defined at mediaTypes level
             }
         }
     }]
-}]
+},
 ```
 
 ### Instream context
 
-For Instream Video, you have to enable the Instream Tracking Module to have Prebid emit the onBidWon required event.
-
-```javascript
-var adUnits = [{
+```
+var adUnits = [
+{
     code: 'test',
     mediaTypes: {
         video: {
@@ -141,9 +132,8 @@ var adUnits = [{
     bids: [{
         bidder: 'mediakeys',
         params: {
-            // additional OpenRTB video params.
-            // will be merged with params defined at mediaTypes level
+            // additional OpenRTB video params. Will be merged with params defined at mediaTypes level
         }
     }]
-}]
+},
 ```

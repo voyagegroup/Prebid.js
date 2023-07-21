@@ -6,7 +6,7 @@ const MANIFEST = 'package.json';
 const through = require('through2');
 const _ = require('lodash');
 const gutil = require('gulp-util');
-const submodules = require('./modules/.submodules.json').parentModules;
+const submodules = require('./modules/.submodules.json');
 
 const MODULE_PATH = './modules';
 const BUILD_PATH = './build/dist';
@@ -105,20 +105,16 @@ module.exports = {
     }, internalModules));
   }),
 
-  getBuiltPath(dev, assetPath) {
-    return path.join(__dirname, dev ? DEV_PATH : BUILD_PATH, assetPath)
-  },
-
   getBuiltModules: function(dev, externalModules) {
     var modules = this.getModuleNames(externalModules);
     if (Array.isArray(externalModules)) {
       modules = _.intersection(modules, externalModules);
     }
-    return modules.map(name => this.getBuiltPath(dev, name + '.js'));
+    return modules.map(name => path.join(__dirname, dev ? DEV_PATH : BUILD_PATH, name + '.js'));
   },
 
   getBuiltPrebidCoreFile: function(dev) {
-    return this.getBuiltPath(dev, 'prebid-core.js')
+    return path.join(__dirname, dev ? DEV_PATH : BUILD_PATH, 'prebid-core' + '.js');
   },
 
   getModulePaths: function(externalModules) {
@@ -173,11 +169,5 @@ module.exports = {
     }
 
     return options;
-  },
-  getDisabledFeatures() {
-    return (argv.disable || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s);
-  },
+  }
 };

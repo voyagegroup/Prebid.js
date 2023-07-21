@@ -211,9 +211,7 @@ describe('emx_digital Adapter', function () {
       'refererInfo': {
         'numIframes': 0,
         'reachedTop': true,
-        'page': 'https://example.com/index.html?pbjs_debug=true',
-        'domain': 'example.com',
-        'ref': 'https://referrer.com'
+        'referer': 'https://example.com/index.html?pbjs_debug=true'
       },
       'bids': [{
         'bidder': 'emx_digital',
@@ -306,7 +304,7 @@ describe('emx_digital Adapter', function () {
       request = JSON.parse(request.data);
       expect(request.site).to.have.property('domain', 'example.com');
       expect(request.site).to.have.property('page', 'https://example.com/index.html?pbjs_debug=true');
-      expect(request.site).to.have.property('ref', 'https://referrer.com');
+      expect(request.site).to.have.property('ref', window.top.document.referrer);
     });
 
     it('builds correctly formatted request banner object', function () {
@@ -707,7 +705,7 @@ describe('emx_digital Adapter', function () {
       }));
     });
 
-    it('returns valid advertiser domains', function () {
+    it('returns valid advertiser domain', function () {
       const bidResponse = utils.deepClone(serverResponse);
       let result = spec.interpretResponse({body: bidResponse});
       expect(result[0].meta.advertiserDomains).to.deep.equal(expectedResponse[0].meta.advertiserDomains);
@@ -724,7 +722,6 @@ describe('emx_digital Adapter', function () {
       expect(syncs).to.not.be.an('undefined');
       expect(syncs).to.have.lengthOf(1);
       expect(syncs[0].type).to.equal('iframe');
-      expect(syncs[0].url).to.equal('https://biddr.brealtime.com/check.html')
     });
 
     it('should pass gdpr params', function () {
@@ -735,34 +732,6 @@ describe('emx_digital Adapter', function () {
       expect(syncs).to.have.lengthOf(1);
       expect(syncs[0].type).to.equal('iframe');
       expect(syncs[0].url).to.contains('gdpr=0');
-      expect(syncs[0].url).to.equal('https://biddr.brealtime.com/check.html?gdpr=0&gdpr_consent=test')
-    });
-
-    it('should pass us_privacy string', function () {
-      let syncs = spec.getUserSyncs({ iframeEnabled: true }, {}, {}, {
-        consentString: 'test',
-      });
-      expect(syncs).to.not.be.an('undefined');
-      expect(syncs).to.have.lengthOf(1);
-      expect(syncs[0].type).to.equal('iframe');
-      expect(syncs[0].url).to.contains('usp=test');
-    });
-
-    it('should pass us_privacy and gdpr strings', function () {
-      let syncs = spec.getUserSyncs({ iframeEnabled: true }, {},
-        {
-          gdprApplies: true,
-          consentString: 'test'
-        },
-        {
-          consentString: 'test'
-        });
-      expect(syncs).to.not.be.an('undefined');
-      expect(syncs).to.have.lengthOf(1);
-      expect(syncs[0].type).to.equal('iframe');
-      expect(syncs[0].url).to.contains('gdpr=1');
-      expect(syncs[0].url).to.contains('usp=test');
-      expect(syncs[0].url).to.equal('https://biddr.brealtime.com/check.html?gdpr=1&gdpr_consent=test&usp=test')
     });
   });
 });

@@ -1,12 +1,10 @@
 import { getParameterByName, logInfo, generateUUID, debugTurnedOn } from '../src/utils.js';
 import {ajax} from '../src/ajax.js';
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import adapterManager from '../src/adapterManager.js';
 import CONSTANTS from '../src/constants.json';
-import {getStorageManager} from '../src/storageManager.js';
-import {MODULE_TYPE_ANALYTICS} from '../src/activities/modules.js';
-const MODULE_CODE = 'pubwise';
-const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_CODE});
+import { getStorageManager } from '../src/storageManager.js';
+const storage = getStorageManager();
 
 /****
  * PubWise.io Analytics
@@ -159,7 +157,7 @@ function extendUserSessionTimeout() {
 }
 
 function userSessionID() {
-  return storage.getDataFromLocalStorage(localStorageSessName()) || '';
+  return storage.getDataFromLocalStorage(localStorageSessName()) ? localStorage.getItem(localStorageSessName()) : '';
 }
 
 function sessionExpired() {
@@ -226,8 +224,7 @@ function filterAuctionInit(data) {
   modified.refererInfo = {};
   // handle clean referrer, we only need one
   if (typeof modified.bidderRequests !== 'undefined' && typeof modified.bidderRequests[0] !== 'undefined' && typeof modified.bidderRequests[0].refererInfo !== 'undefined') {
-    // TODO: please do not send internal data structures over the network
-    modified.refererInfo = modified.bidderRequests[0].refererInfo.legacy;
+    modified.refererInfo = modified.bidderRequests[0].refererInfo;
   }
 
   if (typeof modified.adUnitCodes !== 'undefined') {
@@ -297,7 +294,7 @@ pubwiseAnalytics.handleEvent = function(eventType, data) {
   if (eventType === CONSTANTS.EVENTS.AUCTION_END || eventType === CONSTANTS.EVENTS.BID_WON) {
     flushEvents();
   }
-};
+}
 
 pubwiseAnalytics.storeSessionID = function (userSessID) {
   storage.setDataInLocalStorage(localStorageSessName(), userSessID);
@@ -306,14 +303,11 @@ pubwiseAnalytics.storeSessionID = function (userSessID) {
 
 // ensure a session exists, if not make one, always store it
 pubwiseAnalytics.ensureSession = function () {
-  let sessionId = userSessionID();
-  if (sessionExpired() === true || sessionId === null || sessionId === '') {
+  if (sessionExpired() === true || userSessionID() === null || userSessionID() === '') {
     let generatedId = generateUUID();
     expireUtmData();
     this.storeSessionID(generatedId);
     sessionData.sessionId = generatedId;
-  } else if (sessionId != null) {
-    sessionData.sessionId = sessionId;
   }
   // eslint-disable-next-line
   // console.log('ensured session');
@@ -336,7 +330,7 @@ pubwiseAnalytics.enableAnalytics = function (config) {
 
 adapterManager.registerAnalyticsAdapter({
   adapter: pubwiseAnalytics,
-  code: MODULE_CODE,
+  code: 'pubwise',
   gvlid: 842
 });
 

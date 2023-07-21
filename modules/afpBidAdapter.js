@@ -7,7 +7,6 @@ export const IS_DEV = location.hostname === 'localhost'
 export const BIDDER_CODE = 'afp'
 export const SSP_ENDPOINT = 'https://ssp.afp.ai/api/prebid'
 export const REQUEST_METHOD = 'POST'
-// TODO: test code should be kept in tests
 export const TEST_PAGE_URL = 'https://rtbinsight.ru/smiert-bolshikh-dannykh-kto-na-novienkogo/'
 const SDK_PATH = 'https://cdn.afp.ai/ssp/sdk.js?auto_initialization=false&deploy_to_parent_window=true'
 const TTL = 60
@@ -97,7 +96,7 @@ export const spec = {
   },
   buildRequests(validBidRequests, {refererInfo, gdprConsent}) {
     const payload = {
-      pageUrl: IS_DEV ? TEST_PAGE_URL : refererInfo.page,
+      pageUrl: IS_DEV ? TEST_PAGE_URL : refererInfo.referer,
       gdprConsent: gdprConsent,
       bidRequests: validBidRequests.map(validBidRequest => {
         const {bidId, transactionId, sizes, params: {

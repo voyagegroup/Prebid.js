@@ -1,4 +1,4 @@
-import {deepAccess, isArray, logWarn} from '../src/utils.js';
+import { deepAccess, logWarn } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {BANNER} from '../src/mediaTypes.js';
 import {ajax} from '../src/ajax.js';
@@ -7,23 +7,7 @@ import {ajax} from '../src/ajax.js';
  * Version of the FeedAd bid adapter
  * @type {string}
  */
-const VERSION = '1.0.6';
-
-/**
- * @typedef {object} FeedAdUserSync
- * @inner
- *
- * @property {string} type
- * @property {string} url
- */
-
-/**
- * @typedef {object} FeedAdBidExtension
- * @inner
- *
- * @property {FeedAdUserSync[]} pixels
- * @property {FeedAdUserSync[]} iframes
- */
+const VERSION = '1.0.2';
 
 /**
  * @typedef {object} FeedAdApiBidRequest
@@ -32,8 +16,7 @@ const VERSION = '1.0.6';
  * @property {number} ad_type
  * @property {string} client_token
  * @property {string} placement_id
- * @property {string} prebid_adapter_version
- * @property {string} prebid_sdk_version
+ * @property {string} sdk_version
  * @property {boolean} app_hybrid
  *
  * @property {string} [app_bundle_id]
@@ -48,7 +31,7 @@ const VERSION = '1.0.6';
  * @typedef {object} FeedAdApiBidResponse
  * @inner
  *
- * @property {string} [ad] - Ad HTML payload
+ * @property {string} ad - Ad HTML payload
  * @property {number} cpm - number / float
  * @property {string} creativeId - ID of creative for tracking
  * @property {string} currency - 3-letter ISO 4217 currency-code
@@ -57,7 +40,6 @@ const VERSION = '1.0.6';
  * @property {string} requestId - bids[].bidId
  * @property {number} ttl - Time to live for this ad
  * @property {number} width - Width of creative returned in [].ad
- * @property {FeedAdBidExtension} [ext] - an extension object
  */
 
 /**
@@ -77,14 +59,6 @@ const VERSION = '1.0.6';
  * @property [app_name] {string}
  * @property [device_adid] {string}
  * @property [device_platform] {1|2|3} 1 - Android | 2 - iOS | 3 - Windows
- */
-
-/**
- * @typedef {object} FeedAdServerResponse
- * @extends ServerResponse
- * @inner
- *
- * @property {FeedAdApiBidResponse[]} body - the body of a FeedAd server response
  */
 
 /**
@@ -206,8 +180,7 @@ function createApiBidRParams(request) {
     ad_type: 0,
     client_token: request.params.clientToken,
     placement_id: request.params.placementId,
-    prebid_adapter_version: VERSION,
-    prebid_sdk_version: '$prebid.version$',
+    sdk_version: `prebid_${VERSION}`,
     app_hybrid: false,
   });
 }
@@ -233,7 +206,7 @@ function buildRequests(validBidRequests, bidderRequest) {
     })
   });
   data.bids.forEach(bid => BID_METADATA[bid.bidId] = {
-    referer: data.refererInfo.page,
+    referer: data.refererInfo.referer,
     transactionId: bid.transactionId
   });
   if (bidderRequest.gdprConsent) {
@@ -252,21 +225,15 @@ function buildRequests(validBidRequests, bidderRequest) {
 
 /**
  * Adapts the FeedAd server response to Prebid format
- * @param {FeedAdServerResponse} serverResponse - the FeedAd server response
+ * @param {ServerResponse} serverResponse - the FeedAd server response
  * @param {BidRequest} request - the initial bid request
  * @returns {Bid[]} the FeedAd bids
  */
 function interpretResponse(serverResponse, request) {
-  const response = typeof serverResponse.body === 'string' ? JSON.parse(serverResponse.body) : serverResponse.body;
-  if (!isArray(response)) {
-    return [];
-  }
-  return response.filter(bid => Object.prototype.hasOwnProperty.call(bid, 'ad'))
-    .map(bid => {
-      const copy = Object.assign({}, bid);
-      delete copy.ext;
-      return copy;
-    });
+  /**
+   * @type FeedAdApiBidResponse[]
+   */
+  return typeof serverResponse.body === 'string' ? JSON.parse(serverResponse.body) : serverResponse.body;
 }
 
 /**
@@ -291,8 +258,7 @@ function createTrackingParams(data, klass) {
     prebid_bid_id: bidId,
     prebid_transaction_id: transactionId,
     referer,
-    prebid_adapter_version: VERSION,
-    prebid_sdk_version: '$prebid.version$',
+    sdk_version: VERSION
   };
 }
 
@@ -318,34 +284,6 @@ function trackingHandlerFactory(klass) {
 }
 
 /**
- * Reads the user syncs off the server responses and converts them into Prebid.JS format
- * @param {SyncOptions} syncOptions
- * @param {FeedAdServerResponse[]} serverResponses
- * @param gdprConsent
- * @param uspConsent
- */
-function getUserSyncs(syncOptions, serverResponses, gdprConsent, uspConsent) {
-  return serverResponses.flatMap(response => {
-    // merge all response bodies into one
-    const body = response.body;
-    return isArray(body) ? body : [];
-  })
-    .flatMap(/** @param {FeedAdApiBidResponse} bidResponse */ bidResponse => {
-      // extract user syncs from extension
-      const pixels = (syncOptions.pixelEnabled && bidResponse?.ext?.pixels) ? bidResponse.ext.pixels : [];
-      const iframes = (syncOptions.iframeEnabled && bidResponse?.ext?.iframes) ? bidResponse.ext.iframes : [];
-      return pixels.concat(...iframes);
-    })
-    .reduce((syncs, sync) => {
-      // remove duplicates
-      if (!syncs.find(it => it.type === sync.type && it.url === sync.url)) {
-        syncs.push(sync);
-      }
-      return syncs;
-    }, []);
-}
-
-/**
  * @type {BidderSpec}
  */
 export const spec = {
@@ -356,8 +294,7 @@ export const spec = {
   buildRequests,
   interpretResponse,
   onTimeout: trackingHandlerFactory('prebid_bidTimeout'),
-  onBidWon: trackingHandlerFactory('prebid_bidWon'),
-  getUserSyncs
+  onBidWon: trackingHandlerFactory('prebid_bidWon')
 };
 
 registerBidder(spec);

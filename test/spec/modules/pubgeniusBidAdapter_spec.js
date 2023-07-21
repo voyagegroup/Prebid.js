@@ -239,8 +239,17 @@ describe('pubGENIUS adapter', () => {
       expect(buildRequests([bidRequest], bidderRequest)).to.deep.equal(expectedRequest);
     });
 
-    it('should use page from refererInfo', () => {
-      bidderRequest.refererInfo.page = 'http://pageurl.org';
+    it('should take pageUrl in config over referer in refererInfo', () => {
+      config.setConfig({ pageUrl: 'http://pageurl.org' });
+      bidderRequest.refererInfo.referer = 'http://referer.org';
+      expectedRequest.data.site = { page: 'http://pageurl.org' };
+
+      expect(buildRequests([bidRequest], bidderRequest)).to.deep.equal(expectedRequest);
+    });
+
+    it('should use canonical URL over referer in refererInfo', () => {
+      bidderRequest.refererInfo.canonicalUrl = 'http://pageurl.org';
+      bidderRequest.refererInfo.referer = 'http://referer.org';
       expectedRequest.data.site = { page: 'http://pageurl.org' };
 
       expect(buildRequests([bidRequest], bidderRequest)).to.deep.equal(expectedRequest);

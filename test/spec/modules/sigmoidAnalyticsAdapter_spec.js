@@ -1,7 +1,5 @@
 import sigmoidAnalytic from 'modules/sigmoidAnalyticsAdapter.js';
-import {expect} from 'chai';
-import {expectEvents} from '../../helpers/analytics.js';
-
+import { expect } from 'chai';
 let events = require('src/events');
 let adapterManager = require('src/adapterManager').default;
 let constants = require('src/constants.json');
@@ -34,7 +32,13 @@ describe('sigmoid Prebid Analytic', function () {
         }
       });
 
-      expectEvents().to.beTrackedBy(sigmoidAnalytic.track);
+      events.emit(constants.EVENTS.AUCTION_INIT, {});
+      events.emit(constants.EVENTS.AUCTION_END, {});
+      events.emit(constants.EVENTS.BID_REQUESTED, {});
+      events.emit(constants.EVENTS.BID_RESPONSE, {});
+      events.emit(constants.EVENTS.BID_WON, {});
+
+      sinon.assert.callCount(sigmoidAnalytic.track, 7);
     });
   });
   describe('build utm tag data', function () {

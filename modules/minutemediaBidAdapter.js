@@ -286,10 +286,8 @@ function generateBidParameters(bid, bidderRequest) {
     sizes: sizesArray,
     floorPrice: Math.max(getFloor(bid, mediaType), params.floorPrice),
     bidId: getBidIdParameter('bidId', bid),
-    loop: getBidIdParameter('bidderRequestsCount', bid),
     bidderRequestId: getBidIdParameter('bidderRequestId', bid),
     transactionId: getBidIdParameter('transactionId', bid),
-    coppa: 0
   };
 
   const pos = deepAccess(bid, `mediaTypes.${mediaType}.pos`);
@@ -305,16 +303,6 @@ function generateBidParameters(bid, bidderRequest) {
   const placementId = params.placementId || deepAccess(bid, `mediaTypes.${mediaType}.name`);
   if (placementId) {
     bidObject.placementId = placementId;
-  }
-
-  const sua = deepAccess(bid, `ortb2.device.sua`);
-  if (sua) {
-    bidObject.sua = sua;
-  }
-
-  const coppa = deepAccess(bid, `ortb2.regs.coppa`)
-  if (coppa) {
-    bidObject.coppa = 1;
   }
 
   if (mediaType === VIDEO) {
@@ -357,11 +345,6 @@ function generateBidParameters(bid, bidderRequest) {
     if (linearity) {
       bidObject.linearity = linearity;
     }
-
-    const plcmt = deepAccess(bid, `mediaTypes.video.plcmt`);
-    if (plcmt) {
-      bidObject.plcmt = plcmt;
-    }
   }
 
   return bidObject;
@@ -382,7 +365,7 @@ function generateGeneralParams(generalObject, bidderRequest) {
   const {syncEnabled, filterSettings} = config.getConfig('userSync') || {};
   const {bidderCode} = bidderRequest;
   const generalBidParams = generalObject.params;
-  const timeout = bidderRequest.timeout;
+  const timeout = config.getConfig('bidderTimeout');
 
   // these params are snake_case instead of camelCase to allow backwards compatability on the server.
   // in the future, these will be converted to camelCase to match our convention.
@@ -407,7 +390,7 @@ function generateGeneralParams(generalObject, bidderRequest) {
     generalParams.userIds = JSON.stringify(userIdsParam);
   }
 
-  const ortb2Metadata = bidderRequest.ortb2 || {};
+  const ortb2Metadata = config.getConfig('ortb2') || {};
   if (ortb2Metadata.site) {
     generalParams.site_metadata = JSON.stringify(ortb2Metadata.site);
   }
@@ -440,8 +423,8 @@ function generateGeneralParams(generalObject, bidderRequest) {
   }
 
   if (bidderRequest && bidderRequest.refererInfo) {
-    generalParams.referrer = deepAccess(bidderRequest, 'refererInfo.ref');
-    generalParams.page_url = deepAccess(bidderRequest, 'refererInfo.page') || window.location.href
+    generalParams.referrer = deepAccess(bidderRequest, 'refererInfo.referer');
+    generalParams.page_url = config.getConfig('pageUrl') || deepAccess(window, 'location.href');
   }
 
   return generalParams

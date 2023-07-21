@@ -8,12 +8,11 @@
 import { logError, isPlainObject } from '../src/utils.js'
 import { ajax } from '../src/ajax.js';
 import { submodule } from '../src/hook.js';
-import {getStorageManager} from '../src/storageManager.js';
-import {MODULE_TYPE_UID} from '../src/activities/modules.js';
+import { getStorageManager } from '../src/storageManager.js';
 
 const MODULE_NAME = 'adriverId';
 
-export const storage = getStorageManager({moduleType: MODULE_TYPE_UID, moduleName: MODULE_NAME});
+export const storage = getStorageManager();
 
 /** @type {Submodule} */
 export const adriverIdSubmodule = {
@@ -42,7 +41,7 @@ export const adriverIdSubmodule = {
     if (!isPlainObject(config.params)) {
       config.params = {};
     }
-    const url = 'https://ad.adriver.ru/cgi-bin/json.cgi?sid=1&ad=719473&bt=55&pid=3198680&bid=7189165&bn=7189165&tuid=1&cfa=1';
+    const url = 'https://ad.adriver.ru/cgi-bin/json.cgi?sid=1&ad=719473&bt=55&pid=3198680&bid=7189165&bn=7189165&tuid=1';
     const resp = function (callback) {
       let creationDate = storage.getDataFromLocalStorage('adrcid_cd') || storage.getCookie('adrcid_cd');
       let cookie = storage.getDataFromLocalStorage('adrcid') || storage.getCookie('adrcid');
@@ -74,8 +73,7 @@ export const adriverIdSubmodule = {
             callback();
           }
         };
-        let newUrl = url + '&cid=' + (storage.getDataFromLocalStorage('adrcid') || storage.getCookie('adrcid'));
-        ajax(newUrl, callbacks, undefined, {method: 'GET'});
+        ajax(url, callbacks, undefined, {method: 'GET'});
       }
     };
     return {callback: resp};

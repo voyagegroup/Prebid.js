@@ -1,30 +1,21 @@
 import {includes} from './polyfill.js';
-import { logError, logWarn, insertElement, setScriptAttributes } from './utils.js';
+import { logError, logWarn, insertElement } from './utils.js';
 
 const _requestCache = new WeakMap();
 // The below list contains modules or vendors whom Prebid allows to load external JS.
 const _approvedLoadExternalJSList = [
-  'debugging',
   'adloox',
   'criteo',
   'outstream',
   'adagio',
-  'spotx',
   'browsi',
   'brandmetrics',
   'justtag',
-  'tncId',
   'akamaidap',
   'ftrackId',
   'inskin',
   'hadron',
-  'medianet',
-  'improvedigital',
-  'aaxBlockmeter',
-  'confiant',
-  'arcspan',
-  'airgrid',
-  'clean.io'
+  'medianet'
 ]
 
 /**
@@ -34,9 +25,8 @@ const _approvedLoadExternalJSList = [
  * @param {string} moduleCode bidderCode or module code of the module requesting this resource
  * @param {function} [callback] callback function to be called after the script is loaded
  * @param {Document} [doc] the context document, in which the script will be loaded, defaults to loaded document
- * @param {object} an object of attributes to be added to the script with setAttribute by [key] and [value]; Only the attributes passed in the first request of a url will be added.
  */
-export function loadExternalScript(url, moduleCode, callback, doc, attributes) {
+export function loadExternalScript(url, moduleCode, callback, doc) {
   if (!moduleCode || !url) {
     logError('cannot load external script without url and moduleCode');
     return;
@@ -85,9 +75,9 @@ export function loadExternalScript(url, moduleCode, callback, doc, attributes) {
     } catch (e) {
       logError('Error executing callback', 'adloader.js:loadExternalScript', e);
     }
-  }, doc, attributes);
+  }, doc);
 
-  function requestResource(tagSrc, callback, doc, attributes) {
+  function requestResource(tagSrc, callback, doc) {
     if (!doc) {
       doc = document;
     }
@@ -114,10 +104,6 @@ export function loadExternalScript(url, moduleCode, callback, doc, attributes) {
     }
 
     jptScript.src = tagSrc;
-
-    if (attributes) {
-      setScriptAttributes(jptScript, attributes);
-    }
 
     // add the new script tag to the page
     insertElement(jptScript, doc);

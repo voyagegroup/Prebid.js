@@ -14,11 +14,12 @@ For more information, please visit [Adserver.Online](https://adserver.online).
 
 # Parameters
 
-| Name      | Scope    | Description             | Example                | Type       |
-|-----------|----------|-------------------------|------------------------|------------|
-| `zone`    | required | Zone ID                 | `73815`                | `Integer`  |
-| `attr`    | optional | Custom targeting params | `{foo: ["a", "b"]}`    | `Object`   |
-| `server`  | optional | Custom bidder endpoint  | `https://endpoint.url` | `String`   |
+| Name          | Scope    | Description             | Example   | Type      |
+|---------------|----------|-------------------------|-----------|-----------|
+| `zone`        | required | Zone ID                 | `73815`   | `Integer` |
+| `attr`        | optional | Custom targeting params | `{keywords: ["a", "b"]}` | `Object` |
+
+
 
 # Test parameters for banner
 ```js

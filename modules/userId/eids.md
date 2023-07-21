@@ -75,7 +75,7 @@ userIdAsEids = [
     {
         source: 'flashtalking.com',
         uids: [{
-            id: 'the-ids-object-stringified',
+            id: 'some-random-id-value',
             atype: 1
     },
 
@@ -104,22 +104,6 @@ userIdAsEids = [
         ext: {
             segments: ['s1', 's2']
         }
-    },
-    
-    {
-        source: 'bidswitch.net',
-        uids: [{
-            id: 'some-random-id-value',
-            atype: 3
-        }]
-    },
-    
-    {
-        source: 'media.net',
-        uids: [{
-            id: 'some-random-id-value',
-            atype: 3
-        }]
     },
 
     {
@@ -164,6 +148,14 @@ userIdAsEids = [
 
     {
         source: 'zeotap.com',
+        uids: [{
+            id: 'some-random-id-value',
+            atype: 1
+        }]
+    },
+
+    {
+        source: 'nextroll.com',
         uids: [{
             id: 'some-random-id-value',
             atype: 1
@@ -222,6 +214,13 @@ userIdAsEids = [
         }]
     },
     {
+    source: 'akamai.com',
+        uids: [{
+            id: 'some-random-id-value',
+            atype: 1
+        }]
+    },
+    {
         source: 'admixer.net',
         uids: [{
             id: 'some-random-id-value',
@@ -248,13 +247,6 @@ userIdAsEids = [
               id: 'some-random-id-value',
               atype: 3
          }]
-    },
-    {
-        source: 'thenewco.it',
-        uids: [{
-            id: 'some-random-id-value',
-            atype: 3
-        }]
     }
 ]
 ```

@@ -21,11 +21,12 @@ export const spec = {
       };
     });
 
+    const bidderRequestCanonicalUrl = (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.canonicalUrl) || '';
+    const bidderRequestReferer = (bidderRequest && bidderRequest.refererInfo && bidderRequest.refererInfo.referer) || '';
     const payload = {
       bidRequests: adUnitBidRequests,
-      // TODO: are these the right refererInfo values?
-      url: encodeURIComponent(bidderRequest?.refererInfo?.canonicalUrl || ''),
-      referrer: encodeURIComponent(bidderRequest?.refererInfo?.topmostLocation || '')
+      url: encodeURIComponent(bidderRequestCanonicalUrl),
+      referrer: encodeURIComponent(bidderRequestReferer)
     };
     if (schain) {
       payload.schain = schain;

@@ -4,7 +4,6 @@ import {_map, deepAccess, isEmpty} from '../src/utils.js';
 import {ajax} from '../src/ajax.js';
 import {find} from '../src/polyfill.js';
 import {INSTREAM, OUTSTREAM} from '../src/video.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'dailyhunt';
 const BIDDER_ALIAS = 'dh';
@@ -97,7 +96,7 @@ const flatten = (arr) => {
 const createOrtbRequest = (validBidRequests, bidderRequest) => {
   let device = createOrtbDeviceObj(validBidRequests);
   let user = createOrtbUserObj(validBidRequests)
-  let site = createOrtbSiteObj(validBidRequests, bidderRequest.refererInfo.page)
+  let site = createOrtbSiteObj(validBidRequests, bidderRequest.refererInfo.referer)
   return {
     id: bidderRequest.auctionId,
     imp: [],
@@ -385,9 +384,6 @@ export const spec = {
   isBidRequestValid: bid => !!bid.params.placement_id && !!bid.params.publisher_id && !!bid.params.partner_name,
 
   buildRequests: function (validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     let serverRequests = [];
 
     // ORTB Request.

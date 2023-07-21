@@ -13,12 +13,6 @@ Module connects to Adrino bidder to fetch bids. Only native format is supported.
 # Test Parameters
 
 ```
-pbjs.setConfig({
-    adrino: {
-        host: 'https://custom-domain.adrino.io'
-    }
-});
-
 var adUnits = [
     code: '/12345678/prebid_native_example_1',
     mediaTypes: {

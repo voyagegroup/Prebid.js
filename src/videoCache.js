@@ -9,15 +9,9 @@
  * This trickery helps integrate with ad servers, which set character limits on request params.
  */
 
-import {ajaxBuilder} from './ajax.js';
-import {config} from './config.js';
+import { ajax } from './ajax.js';
+import { config } from './config.js';
 import {auctionManager} from './auctionManager.js';
-
-/**
- * Might be useful to be configurable in the future
- * Depending on publisher needs
- */
-const ttlBufferInSeconds = 15;
 
 /**
  * @typedef {object} CacheableUrlBid
@@ -69,11 +63,11 @@ function wrapURI(uri, impUrl) {
 function toStorageRequest(bid, {index = auctionManager.index} = {}) {
   const vastValue = bid.vastXml ? bid.vastXml : wrapURI(bid.vastUrl, bid.vastImpUrl);
   const auction = index.getAuction(bid);
-  const ttlWithBuffer = Number(bid.ttl) + ttlBufferInSeconds;
+
   let payload = {
     type: 'xml',
     value: vastValue,
-    ttlseconds: ttlWithBuffer
+    ttlseconds: Number(bid.ttl)
   };
 
   if (config.getConfig('cache.vasttrack')) {
@@ -142,11 +136,11 @@ function shimStorageCallback(done) {
  * @param {videoCacheStoreCallback} [done] An optional callback which should be executed after
  * the data has been stored in the cache.
  */
-export function store(bids, done, getAjax = ajaxBuilder) {
+export function store(bids, done) {
   const requestData = {
     puts: bids.map(toStorageRequest)
   };
-  const ajax = getAjax(config.getConfig('cache.timeout'));
+
   ajax(config.getConfig('cache.url'), shimStorageCallback(done), JSON.stringify(requestData), {
     contentType: 'text/plain',
     withCredentials: true

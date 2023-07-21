@@ -87,7 +87,7 @@ export const spec = {
       syncArr.push({
         type: 'iframe',
         url: IFRAMESYNC + policyParam
-      });
+      })
     } else {
       syncArr.push({
         type: 'image',
@@ -116,13 +116,13 @@ registerBidder(spec);
  * Creates site description object
  */
 function createSite(refInfo) {
-  let url = parseUrl(refInfo.page || '');
+  let url = parseUrl(refInfo.referer);
   let site = {
     'domain': url.hostname,
     'page': url.protocol + '://' + url.hostname + url.pathname
   };
-  if (refInfo.ref) {
-    site.ref = refInfo.ref
+  if (self === top && document.referrer) {
+    site.ref = document.referrer;
   }
   let keywords = document.getElementsByTagName('meta')['keywords'];
   if (keywords && keywords.content) {

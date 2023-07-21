@@ -1,5 +1,5 @@
-import { expect } from 'chai';
-import { spec } from '../../../modules/limelightDigitalBidAdapter.js';
+import {expect} from 'chai';
+import {spec} from '../../../modules/limelightDigitalBidAdapter.js';
 
 describe('limelightDigitalAdapter', function () {
   const bid1 = {
@@ -10,12 +10,7 @@ describe('limelightDigitalAdapter', function () {
       host: 'exchange.ortb.net',
       adUnitId: 123,
       adUnitType: 'banner',
-      publisherId: 'perfectPublisher',
-      custom1: 'custom1',
-      custom2: 'custom2',
-      custom3: 'custom3',
-      custom4: 'custom4',
-      custom5: 'custom5'
+      publisherId: 'perfectPublisher'
     },
     placementCode: 'placement_0',
     auctionId: '74f78609-a92d-4cf1-869f-1b244bbfb5d2',
@@ -34,18 +29,7 @@ describe('limelightDigitalAdapter', function () {
           }
         ]
       }
-    ],
-    schain: {
-      ver: '1.0',
-      complete: 1,
-      nodes: [
-        {
-          asi: 'example.com',
-          sid: '1',
-          hp: 1
-        }
-      ]
-    }
+    ]
   }
   const bid2 = {
     bidId: '58ee9870c3164a',
@@ -54,12 +38,7 @@ describe('limelightDigitalAdapter', function () {
     params: {
       host: 'ads.project-limelight.com',
       adUnitId: 456,
-      adUnitType: 'banner',
-      custom1: 'custom1',
-      custom2: 'custom2',
-      custom3: 'custom3',
-      custom4: 'custom4',
-      custom5: 'custom5'
+      adUnitType: 'banner'
     },
     placementCode: 'placement_1',
     auctionId: '482f88de-29ab-45c8-981a-d25e39454a34',
@@ -74,23 +53,7 @@ describe('limelightDigitalAdapter', function () {
           }
         ]
       }
-    ],
-    schain: {
-      ver: '1.0',
-      complete: 1,
-      nodes: [
-        {
-          asi: 'example.com',
-          sid: '1',
-          hp: 1
-        },
-        {
-          asi: 'example1.com',
-          sid: '2',
-          hp: 1
-        }
-      ]
-    }
+    ]
   }
   const bid3 = {
     bidId: '019645c7d69460',
@@ -100,12 +63,7 @@ describe('limelightDigitalAdapter', function () {
       host: 'exchange.ortb.net',
       adUnitId: 789,
       adUnitType: 'video',
-      publisherId: 'secondPerfectPublisher',
-      custom1: 'custom1',
-      custom2: 'custom2',
-      custom3: 'custom3',
-      custom4: 'custom4',
-      custom5: 'custom5'
+      publisherId: 'secondPerfectPublisher'
     },
     placementCode: 'placement_2',
     auctionId: 'e4771143-6aa7-41ec-8824-ced4342c96c8',
@@ -123,18 +81,7 @@ describe('limelightDigitalAdapter', function () {
           }
         ]
       }
-    ],
-    schain: {
-      ver: '1.0',
-      complete: 1,
-      nodes: [
-        {
-          asi: 'example.com',
-          sid: '1',
-          hp: 1
-        }
-      ]
-    }
+    ]
   }
   const bid4 = {
     bidId: '019645c7d69460',
@@ -143,12 +90,7 @@ describe('limelightDigitalAdapter', function () {
     params: {
       host: 'exchange.ortb.net',
       adUnitId: 789,
-      adUnitType: 'video',
-      custom1: 'custom1',
-      custom2: 'custom2',
-      custom3: 'custom3',
-      custom4: 'custom4',
-      custom5: 'custom5'
+      adUnitType: 'video'
     },
     placementCode: 'placement_2',
     auctionId: 'e4771143-6aa7-41ec-8824-ced4342c96c8',
@@ -165,18 +107,7 @@ describe('limelightDigitalAdapter', function () {
           }
         ]
       }
-    ],
-    schain: {
-      ver: '1.0',
-      complete: 1,
-      nodes: [
-        {
-          asi: 'example.com',
-          sid: '1',
-          hp: 1
-        }
-      ]
-    }
+    ]
   }
 
   describe('buildRequests', function () {
@@ -215,13 +146,7 @@ describe('limelightDigitalAdapter', function () {
             'sizes',
             'transactionId',
             'publisherId',
-            'userIdAsEids',
-            'supplyChain',
-            'custom1',
-            'custom2',
-            'custom3',
-            'custom4',
-            'custom5'
+            'userIdAsEids'
           );
           expect(adUnit.id).to.be.a('number');
           expect(adUnit.bidId).to.be.a('string');
@@ -229,12 +154,6 @@ describe('limelightDigitalAdapter', function () {
           expect(adUnit.transactionId).to.be.a('string');
           expect(adUnit.sizes).to.be.an('array');
           expect(adUnit.userIdAsEids).to.be.an('array');
-          expect(adUnit.supplyChain).to.be.an('object');
-          expect(adUnit.custom1).to.be.a('string');
-          expect(adUnit.custom2).to.be.a('string');
-          expect(adUnit.custom3).to.be.a('string');
-          expect(adUnit.custom4).to.be.a('string');
-          expect(adUnit.custom5).to.be.a('string');
         })
       })
     })
@@ -668,5 +587,4 @@ function validateAdUnit(adUnit, bid) {
   }));
   expect(adUnit.publisherId).to.equal(bid.params.publisherId);
   expect(adUnit.userIdAsEids).to.deep.equal(bid.userIdAsEids);
-  expect(adUnit.supplyChain).to.deep.equal(bid.schain);
 }

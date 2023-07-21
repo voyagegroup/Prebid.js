@@ -69,8 +69,7 @@ const getCommonBidsData = bidderRequest => {
   };
 
   if (bidderRequest && bidderRequest.refererInfo) {
-    // TODO: is 'page' the right value here?
-    payload.referer = encodeURIComponent(bidderRequest.refererInfo.page || '');
+    payload.referer = encodeURIComponent(bidderRequest.refererInfo.referer);
   }
 
   if (bidderRequest && bidderRequest.uspConsent) {
@@ -98,7 +97,7 @@ const getBidRequestToSend = validBidRequest => {
     bidId: validBidRequest.bidId,
     bidfloor: 0,
     position: parseInt(validBidRequest.params.position) || 1,
-    instl: deepAccess(validBidRequest.ortb2Imp, 'instl') === 1 || parseInt(validBidRequest.params.instl) === 1 ? 1 : 0,
+    instl: parseInt(validBidRequest.params.instl) || 0,
   };
 
   if (validBidRequest.mediaTypes[BANNER]) {

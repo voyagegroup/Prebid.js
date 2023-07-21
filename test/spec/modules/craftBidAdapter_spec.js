@@ -14,17 +14,11 @@ describe('craftAdapter', function () {
 
   describe('isBidRequestValid', function () {
     before(function() {
-      $$PREBID_GLOBAL$$.bidderSettings = {
-        craft: {
-          storageAllowed: true
-        }
-      };
       this.windowContext = window.context;
       window.context = null;
     });
 
     after(function() {
-      $$PREBID_GLOBAL$$.bidderSettings = {};
       window.context = this.windowContext;
     });
     let bid = {
@@ -66,16 +60,6 @@ describe('craftAdapter', function () {
   });
 
   describe('buildRequests', function () {
-    before(function () {
-      $$PREBID_GLOBAL$$.bidderSettings = {
-        craft: {
-          storageAllowed: true
-        }
-      };
-    });
-    after(function () {
-      $$PREBID_GLOBAL$$.bidderSettings = {};
-    });
     let bidRequests = [{
       bidder: 'craft',
       params: {
@@ -91,7 +75,7 @@ describe('craftAdapter', function () {
     }];
     let bidderRequest = {
       refererInfo: {
-        topmostLocation: 'https://www.gacraft.jp/publish/craft-prebid-example.html'
+        referer: 'https://www.gacraft.jp/publish/craft-prebid-example.html'
       }
     };
     it('sends bid request to ENDPOINT via POST', function () {

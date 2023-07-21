@@ -105,13 +105,13 @@ describe('radsAdapter', function () {
     // Without gdprConsent
     let bidderRequest = {
       refererInfo: {
-        page: 'some_referrer.net'
+        referer: 'some_referrer.net'
       }
     }
     // With gdprConsent
     var bidderRequestGdprConsent = {
       refererInfo: {
-        page: 'some_referrer.net'
+        referer: 'some_referrer.net'
       },
       gdprConsent: {
         consentString: 'BOJ/P2HOJ/P2HABABMAAAAAZ+A==',

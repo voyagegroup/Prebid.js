@@ -2,7 +2,7 @@
 layout: bidder
 title: ventes
 description: Prebid ventes Bidder Adapter
-pbjs: true
+pbjs: false
 biddercode: ventes
 gdpr_supported: false
 usp_supported: false

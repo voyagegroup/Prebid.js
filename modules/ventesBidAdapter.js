@@ -2,10 +2,11 @@ import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
 import {convertCamelToUnderscore, isArray, isNumber, isPlainObject, isStr, replaceAuctionPrice} from '../src/utils.js';
 import {find} from '../src/polyfill.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BID_METHOD = 'POST';
-const BIDDER_URL = 'https://ad.ventesavenues.in/va/ad';
+const BIDDER_URL = 'http://13.234.201.146:8088/va/ad';
+
+const DOMAIN_REGEX = new RegExp('//([^/]*)');
 
 function groupBy(values, key) {
   const groups = values.reduce((acc, value) => {
@@ -68,16 +69,26 @@ function validateParameters(parameters) {
   return true;
 }
 
+function extractSiteDomainFromURL(url) {
+  if (!url || !isStr(url)) return null;
+
+  const domain = url.match(DOMAIN_REGEX);
+
+  if (isArray(domain) && domain.length === 2) return domain[1];
+
+  return null;
+}
+
 function generateSiteFromAdUnitContext(bidRequests, adUnitContext) {
   if (!adUnitContext || !adUnitContext.refererInfo) return null;
 
-  const domain = adUnitContext.refererInfo.domain;
+  const domain = extractSiteDomainFromURL(adUnitContext.refererInfo.referer);
   const publisherId = bidRequests[0].params.publisherId;
 
   if (!domain) return null;
 
   return {
-    page: adUnitContext.refererInfo.page,
+    page: adUnitContext.refererInfo.referer,
     domain: domain,
     name: domain,
     publisher: {
@@ -355,9 +366,6 @@ const venavenBidderSpec = {
           validateParameters(adUnit.params);
   },
   buildRequests(bidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    bidRequests = convertOrtbRequestToProprietaryNative(bidRequests);
-
     if (!bidRequests) return null;
 
     return groupBy(bidRequests, 'bidderRequestId').map(group => {

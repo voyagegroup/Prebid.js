@@ -4,7 +4,6 @@ window.process = {
   }
 };
 
-require('test/helpers/consentData.js');
 require('test/helpers/prebidGlobal.js');
 require('test/mocks/adloaderStub.js');
 require('test/mocks/xhr.js');

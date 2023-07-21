@@ -19,7 +19,6 @@ import {
   uniques
 } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 /**
  * CONSTANTS
@@ -102,9 +101,6 @@ function isBidRequestValid(bidRequest) {
 }
 
 function buildRequests(validBidRequests, bidderRequest) {
-  // convert Native ORTB definition to old-style prebid native definition
-  validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
   const requests = [];
 
   if (validBidRequests.length > 0) {
@@ -127,9 +123,9 @@ function buildRequest(validBidRequests, bidderRequest) {
     id: bidderRequest.bidderRequestId,
     tmax: bidderRequest.timeout,
     site: {
-      domain: bidderRequest.refererInfo.domain,
-      page: bidderRequest.refererInfo.page,
-      ref: bidderRequest.refererInfo.ref,
+      domain: window.location.hostname,
+      page: window.location.href,
+      ref: bidderRequest.refererInfo.referer,
     },
     source: buildSource(validBidRequests, bidderRequest),
     device: buildDevice(),

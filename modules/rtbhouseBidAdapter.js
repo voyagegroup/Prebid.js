@@ -1,15 +1,11 @@
-import {deepAccess, mergeDeep, isArray, logError, logInfo} from '../src/utils.js';
-import { getOrigin } from '../libraries/getOrigin/index.js';
+import {deepAccess, getOrigin, isArray, logError} from '../src/utils.js';
 import {BANNER, NATIVE} from '../src/mediaTypes.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {includes} from '../src/polyfill.js';
-import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
-import { config } from '../src/config.js';
 
 const BIDDER_CODE = 'rtbhouse';
 const REGIONS = ['prebid-eu', 'prebid-us', 'prebid-asia'];
 const ENDPOINT_URL = 'creativecdn.com/bidder/prebid/bids';
-const FLEDGE_ENDPOINT_URL = 'creativecdn.com/bidder/prebidfledge/bids';
 const DEFAULT_CURRENCY_ARR = ['USD']; // NOTE - USD is the only supported currency right now; Hardcoded for bids
 const SUPPORTED_MEDIA_TYPES = [BANNER, NATIVE];
 const TTL = 55;
@@ -47,18 +43,14 @@ export const spec = {
     return !!(includes(REGIONS, bid.params.region) && bid.params.publisherId);
   },
   buildRequests: function (validBidRequests, bidderRequest) {
-    // convert Native ORTB definition to old-style prebid native definition
-    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
-
     const request = {
       id: validBidRequests[0].auctionId,
-      imp: validBidRequests.map(slot => mapImpression(slot, bidderRequest)),
+      imp: validBidRequests.map(slot => mapImpression(slot)),
       site: mapSite(validBidRequests, bidderRequest),
       cur: DEFAULT_CURRENCY_ARR,
       test: validBidRequests[0].params.test || 0,
-      source: mapSource(validBidRequests[0], bidderRequest),
+      source: mapSource(validBidRequests[0]),
     };
-
     if (bidderRequest && bidderRequest.gdprConsent && bidderRequest.gdprConsent.gdprApplies) {
       const consentStr = (bidderRequest.gdprConsent.consentString)
         ? bidderRequest.gdprConsent.consentString.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : '';
@@ -71,7 +63,7 @@ export const spec = {
       if (schain) {
         request.ext = {
           schain: schain,
-        };
+        }
       }
     }
 
@@ -84,29 +76,13 @@ export const spec = {
       }
     }
 
-    const ortb2Params = bidderRequest?.ortb2 || {};
-    ['site', 'user', 'device', 'bcat', 'badv'].forEach(entry => {
-      const ortb2Param = ortb2Params[entry];
-      if (ortb2Param) {
-        mergeDeep(request, { [entry]: ortb2Param });
-      }
-    });
-
-    let computedEndpointUrl = ENDPOINT_URL;
-
-    const fledgeConfig = config.getConfig('fledgeConfig');
-    if (bidderRequest.fledgeEnabled && fledgeConfig) {
-      mergeDeep(request, { ext: { fledge_config: fledgeConfig } });
-      computedEndpointUrl = FLEDGE_ENDPOINT_URL;
-    }
-
     return {
       method: 'POST',
-      url: 'https://' + validBidRequests[0].params.region + '.' + computedEndpointUrl,
+      url: 'https://' + validBidRequests[0].params.region + '.' + ENDPOINT_URL,
       data: JSON.stringify(request)
     };
   },
-  interpretOrtbResponse: function (serverResponse, originalRequest) {
+  interpretResponse: function (serverResponse, originalRequest) {
     const responseBody = serverResponse.body;
     if (!isArray(responseBody)) {
       return [];
@@ -114,73 +90,16 @@ export const spec = {
 
     const bids = [];
     responseBody.forEach(serverBid => {
-      if (!serverBid.price) { // price may exist and is === 0 or there's no price prop at all (fledge req case)
+      if (serverBid.price === 0) {
         return;
       }
-
-      let interpretedBid;
-
       // try...catch would be risky cause JSON.parse throws SyntaxError
       if (serverBid.adm.indexOf('{') === 0) {
-        interpretedBid = interpretNativeBid(serverBid);
+        bids.push(interpretNativeBid(serverBid));
       } else {
-        interpretedBid = interpretBannerBid(serverBid);
+        bids.push(interpretBannerBid(serverBid));
       }
-      if (serverBid.ext) interpretedBid.ext = serverBid.ext;
-
-      bids.push(interpretedBid);
     });
-    return bids;
-  },
-  interpretResponse: function (serverResponse, originalRequest) {
-    let bids;
-
-    const responseBody = serverResponse.body;
-    let fledgeAuctionConfigs = null;
-
-    if (responseBody.bidid && isArray(responseBody?.ext?.igbid)) {
-      // we have fledge response
-      // mimic the original response ([{},...])
-      bids = this.interpretOrtbResponse({ body: responseBody.seatbid[0]?.bid }, originalRequest);
-
-      const seller = responseBody.ext.seller;
-      const decisionLogicUrl = responseBody.ext.decisionLogicUrl;
-      const sellerTimeout = 'sellerTimeout' in responseBody.ext ? { sellerTimeout: responseBody.ext.sellerTimeout } : {};
-      responseBody.ext.igbid.forEach((igbid) => {
-        const perBuyerSignals = {};
-        igbid.igbuyer.forEach(buyerItem => {
-          perBuyerSignals[buyerItem.igdomain] = buyerItem.buyersignal
-        });
-        fledgeAuctionConfigs = fledgeAuctionConfigs || {};
-        fledgeAuctionConfigs[igbid.impid] = mergeDeep(
-          {
-            seller,
-            decisionLogicUrl,
-            interestGroupBuyers: Object.keys(perBuyerSignals),
-            perBuyerSignals,
-          },
-          sellerTimeout
-        );
-      });
-    } else {
-      bids = this.interpretOrtbResponse(serverResponse, originalRequest);
-    }
-
-    if (fledgeAuctionConfigs) {
-      fledgeAuctionConfigs = Object.entries(fledgeAuctionConfigs).map(([bidId, cfg]) => {
-        return {
-          bidId,
-          config: Object.assign({
-            auctionSignals: {}
-          }, cfg)
-        }
-      });
-      logInfo('Response with FLEDGE:', { bids, fledgeAuctionConfigs });
-      return {
-        bids,
-        fledgeAuctionConfigs,
-      }
-    }
     return bids;
   }
 };
@@ -206,7 +125,7 @@ function applyFloor(slot) {
  * @param {object} slot Ad Unit Params by Prebid
  * @returns {object} Imp by OpenRTB 2.5 §3.2.4
  */
-function mapImpression(slot, bidderRequest) {
+function mapImpression(slot) {
   const imp = {
     id: slot.bidId,
     banner: mapBanner(slot),
@@ -217,21 +136,6 @@ function mapImpression(slot, bidderRequest) {
   const bidfloor = applyFloor(slot);
   if (bidfloor) {
     imp.bidfloor = bidfloor;
-  }
-
-  if (bidderRequest.fledgeEnabled) {
-    imp.ext = imp.ext || {};
-    imp.ext.ae = slot?.ortb2Imp?.ext?.ae
-  } else {
-    if (imp.ext?.ae) {
-      delete imp.ext.ae;
-    }
-  }
-
-  const tid = deepAccess(slot, 'ortb2Imp.ext.tid');
-  if (tid) {
-    imp.ext = imp.ext || {};
-    imp.ext.tid = tid;
   }
 
   return imp;
@@ -276,7 +180,7 @@ function mapSite(slot, bidderRequest) {
     publisher: {
       id: pubId.toString(),
     },
-    page: bidderRequest.refererInfo.page,
+    page: bidderRequest.refererInfo.referer,
     name: getOrigin()
   };
   if (channel) {
@@ -289,9 +193,9 @@ function mapSite(slot, bidderRequest) {
  * @param {object} slot Ad Unit Params by Prebid
  * @returns {object} Source by OpenRTB 2.5 §3.2.2
  */
-function mapSource(slot, bidderRequest) {
+function mapSource(slot) {
   const source = {
-    tid: bidderRequest?.auctionId || '',
+    tid: slot.transactionId,
   };
 
   return source;
@@ -476,7 +380,7 @@ function interpretNativeBid(serverBid) {
 function interpretNativeAd(adm) {
   const native = JSON.parse(adm).native;
   const result = {
-    clickUrl: encodeURI(native.link.url),
+    clickUrl: encodeURIComponent(native.link.url),
     impressionTrackers: native.imptrackers
   };
   native.assets.forEach(asset => {
@@ -486,14 +390,14 @@ function interpretNativeAd(adm) {
         break;
       case OPENRTB.NATIVE.ASSET_ID.IMAGE:
         result.image = {
-          url: encodeURI(asset.img.url),
+          url: encodeURIComponent(asset.img.url),
           width: asset.img.w,
           height: asset.img.h
         };
         break;
       case OPENRTB.NATIVE.ASSET_ID.ICON:
         result.icon = {
-          url: encodeURI(asset.img.url),
+          url: encodeURIComponent(asset.img.url),
           width: asset.img.w,
           height: asset.img.h
         };

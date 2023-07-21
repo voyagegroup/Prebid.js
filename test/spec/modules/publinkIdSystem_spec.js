@@ -1,12 +1,11 @@
 import {publinkIdSubmodule} from 'modules/publinkIdSystem.js';
-import {getCoreStorageManager, getStorageManager} from '../../../src/storageManager';
+import {getStorageManager} from '../../../src/storageManager';
 import {server} from 'test/mocks/xhr.js';
 import sinon from 'sinon';
 import {uspDataHandler} from '../../../src/adapterManager';
 import {parseUrl} from '../../../src/utils';
 
-const storage = getCoreStorageManager();
-
+export const storage = getStorageManager({gvlid: 24});
 const TEST_COOKIE_VALUE = 'cookievalue';
 describe('PublinkIdSystem', () => {
   describe('decode', () => {

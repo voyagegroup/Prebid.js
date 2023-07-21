@@ -12,7 +12,7 @@
 import {submodule} from '../src/hook.js';
 import {config} from '../src/config.js';
 import {ajaxBuilder} from '../src/ajax.js';
-import {deepAccess, logError} from '../src/utils.js';
+import {logError} from '../src/utils.js';
 import {find} from '../src/polyfill.js';
 import {getGlobal} from '../src/prebidGlobal.js';
 
@@ -130,7 +130,7 @@ function onRequestCompleted(mediaID, success) {
 function enrichBidRequest(bidReqConfig, onDone) {
   activeRequestCount = 0;
   const adUnits = bidReqConfig.adUnits || getGlobal().adUnits;
-  enrichAdUnits(adUnits, bidReqConfig.ortb2Fragments);
+  enrichAdUnits(adUnits);
   if (activeRequestCount <= 0) {
     onDone();
   } else {
@@ -142,10 +142,10 @@ function enrichBidRequest(bidReqConfig, onDone) {
  * get targeting data and write to bids
  * @function
  * @param {adUnit[]} adUnits
- * @param ortb2Fragments
+ * @param {function} onDone
  */
-export function enrichAdUnits(adUnits, ortb2Fragments = {}) {
-  const fpdFallback = deepAccess(ortb2Fragments.global, 'site.ext.data.jwTargeting');
+export function enrichAdUnits(adUnits) {
+  const fpdFallback = config.getConfig('ortb2.site.ext.data.jwTargeting');
   adUnits.forEach(adUnit => {
     const jwTargeting = extractPublisherParams(adUnit, fpdFallback);
     if (!jwTargeting || !Object.keys(jwTargeting).length) {
@@ -162,7 +162,11 @@ export function enrichAdUnits(adUnits, ortb2Fragments = {}) {
       const contentData = getContentData(mediaId, contentSegments);
       const targeting = formatTargetingResponse(vat);
       enrichBids(adUnit.bids, targeting, contentId, contentData);
-      addOrtbSiteContent(ortb2Fragments.global, contentId, contentData);
+      let ortb2 = config.getConfig('ortb2');
+      ortb2 = getOrtbSiteContent(ortb2, contentId, contentData);
+      if (ortb2) {
+        config.setConfig({ ortb2 });
+      }
     };
     loadVat(jwTargeting, onVatResponse);
   });
@@ -274,7 +278,8 @@ export function getContentSegments(segments) {
 
   const formattedSegments = segments.reduce((convertedSegments, rawSegment) => {
     convertedSegments.push({
-      id: rawSegment
+      id: rawSegment,
+      value: rawSegment
     });
     return convertedSegments;
   }, []);
@@ -304,12 +309,12 @@ export function getContentData(mediaId, segments) {
   return contentData;
 }
 
-export function addOrtbSiteContent(ortb2, contentId, contentData) {
+export function getOrtbSiteContent(ortb2, contentId, contentData) {
   if (!contentId && !contentData) {
     return;
   }
 
-  if (ortb2 == null) {
+  if (!ortb2) {
     ortb2 = {};
   }
 
@@ -340,6 +345,10 @@ function enrichBids(bids, targeting, contentId, contentData) {
 
   bids.forEach(bid => {
     addTargetingToBid(bid, targeting);
+    const ortb2 = getOrtbSiteContent(bid.ortb2, contentId, contentData);
+    if (ortb2) {
+      bid.ortb2 = ortb2;
+    }
   });
 }
 

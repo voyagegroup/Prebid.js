@@ -1,62 +1,43 @@
 # Overview
 
 ```
-Module Name: STV/Smartstream Bidder Adapter
+Module Name: STV Video Bidder Adapter
 Module Type: Bidder Adapter
-Maintainer: prebid@smartstream.tv
+Maintainer: prebid@dspx.tv
 ```
 
 # Description
 
-STV/Smartstream adapter for Prebid.
+STV video adapter for Prebid.js 1.x
 
-# Test Parameters
+# Parameters
 ```
     var adUnits = [
         {
-            code: 'test-div',
+            // video settings
+            code: 'video-obj',
             mediaTypes: {
-                banner: {
-                    sizes: [
-                      [300, 250],
-                      [300, 600],
-                    ]
+                video: {
+                    context: 'instream',
+                    playerSize: [640, 480]
                 }
             },
             bids: [
                 {
                     bidder: "stv",
                     params: {
-                        placement: '101',   // [required] info available from your contact with Smartstream team
-                        /* // [optional params]
-                            bcat:  "IAB2,IAB4",  // [optional] list of blocked advertiser categories (IAB), comma separated 
-                        */
+                        placement: "", // placement ID of inventory with STV
+                        noskip: 1, // 0 or 1 
+                        pfilter: {/*
+                            min_duration: 10, // min duration
+                            max_duration: 30, // max duration
+                            min_bitrate:  300, // min bitrate
+                            max_bitrate:  1600, // max bitrate
+                        */}
                     }
-                }
+                 }
             ]
-        },
-        {
-            code: 'video1',
-            mediaTypes: {
-                video: {
-                    playerSize: [640, 480],
-                    context: 'instream'
-                }
-            },
-            bids: [{
-                bidder: 'stv',
-                params: {
-                    placement: '106',
-                    /* // [optional params]
-                        bcat:  "IAB2,IAB4",  // [optional] list of blocked advertiser categories (IAB), comma separated 
-                        floorprice: 1000000, // input min_cpm_micros, CPM in EUR * 1000000
-                        max_duration: 60,    // in seconds
-                        min_duration: 5,     // in seconds
-                        max_bitrate: 600,   
-                        api: [1,2],          // https://github.com/InteractiveAdvertisingBureau/AdCOM/blob/master/AdCOM%20v1.0%20FINAL.md#list--api-frameworks-
-                    */
-                }
-            }]
         }
     ];
 ```
+

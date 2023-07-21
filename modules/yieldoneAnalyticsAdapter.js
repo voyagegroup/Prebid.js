@@ -1,6 +1,6 @@
 import { isArray, deepClone } from '../src/utils.js';
 import {ajax} from '../src/ajax.js';
-import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
+import adapter from '../src/AnalyticsAdapter.js';
 import CONSTANTS from '../src/constants.json';
 import adapterManager from '../src/adapterManager.js';
 import { targeting } from '../src/targeting.js';
@@ -99,8 +99,7 @@ const yieldoneAnalytics = Object.assign(adapter({analyticsType}), {
       if (currentAuctionId) {
         const eventsStorage = yieldoneAnalytics.eventsStorage;
         if (!eventsStorage[currentAuctionId]) eventsStorage[currentAuctionId] = {events: []};
-        // TODO: is 'page' the right value here?
-        const referrer = args.refererInfo && args.refererInfo.page;
+        const referrer = args.refererInfo && args.refererInfo.referer;
         if (referrer && referrers[currentAuctionId] !== referrer) {
           referrers[currentAuctionId] = referrer;
         }

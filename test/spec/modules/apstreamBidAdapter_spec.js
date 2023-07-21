@@ -33,11 +33,6 @@ describe('AP Stream adapter', function() {
 
     let mockConfig;
     beforeEach(function () {
-      $$PREBID_GLOBAL$$.bidderSettings = {
-        apstream: {
-          storageAllowed: true
-        }
-      };
       mockConfig = {
         apstream: {
           publisherId: '4321'
@@ -49,7 +44,6 @@ describe('AP Stream adapter', function() {
     });
 
     afterEach(function () {
-      $$PREBID_GLOBAL$$.bidderSettings = {};
       config.getConfig.restore();
     });
 
@@ -200,6 +194,9 @@ describe('AP Stream adapter', function() {
 
     describe('dsu', function() {
       it('should pass DSU from local storage if set', function() {
+        let dsu = 'some_dsu';
+        localStorage.setItem('apr_dsu', dsu);
+
         const bidderRequest = {
           gdprConsent: {
             gdprApplies: true,
@@ -213,7 +210,30 @@ describe('AP Stream adapter', function() {
         };
 
         const request = spec.buildRequests(validBidRequests, bidderRequest)[0].data;
-        assert.isNotEmpty(request.dsu);
+
+        assert.equal(request.dsu, dsu);
+      });
+
+      it('should generate new DSU if nothing in local storage', function() {
+        localStorage.removeItem('apr_dsu');
+
+        const bidderRequest = {
+          gdprConsent: {
+            gdprApplies: true,
+            consentString: 'consentDataString',
+            vendorData: {
+              vendorConsents: {
+                '394': true
+              }
+            }
+          }
+        };
+
+        const request = spec.buildRequests(validBidRequests, bidderRequest)[0].data;
+        let dsu = localStorage.getItem('apr_dsu');
+
+        assert.isNotEmpty(dsu);
+        assert.equal(request.dsu, dsu);
       });
     });
   });
