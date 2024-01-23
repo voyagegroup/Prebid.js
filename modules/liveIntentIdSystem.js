@@ -115,6 +115,7 @@ function initializeLiveConnect(configParams) {
   }
 
   liveConnectConfig.wrapperName = 'prebid';
+  liveConnectConfig.trackerVersion = '$prebid.version$';
   liveConnectConfig.identityResolutionConfig = identityResolutionConfig;
   liveConnectConfig.identifiersToResolve = configParams.identifiersToResolve || [];
   liveConnectConfig.fireEventDelay = configParams.fireEventDelay;
@@ -156,7 +157,7 @@ function tryFireEvent() {
 
 /** @type {Submodule} */
 export const liveIntentIdSubmodule = {
-  moduleMode: process.env.LiveConnectMode,
+  moduleMode: '$$LIVE_INTENT_MODULE_MODE$$',
   /**
    * used to link submodule with config
    * @type {string}
@@ -221,6 +222,10 @@ export const liveIntentIdSubmodule = {
 
       if (value.pubmatic) {
         result.pubmatic = { 'id': value.pubmatic, ext: { provider: LI_PROVIDER_DOMAIN } }
+      }
+
+      if (value.sovrn) {
+        result.sovrn = { 'id': value.sovrn, ext: { provider: LI_PROVIDER_DOMAIN } }
       }
 
       return result
@@ -326,7 +331,7 @@ export const liveIntentIdSubmodule = {
       }
     },
     'openx': {
-      source: 'openx.com',
+      source: 'openx.net',
       atype: 3,
       getValue: function(data) {
         return data.id;
@@ -339,6 +344,18 @@ export const liveIntentIdSubmodule = {
     },
     'pubmatic': {
       source: 'pubmatic.com',
+      atype: 3,
+      getValue: function(data) {
+        return data.id;
+      },
+      getUidExt: function(data) {
+        if (data.ext) {
+          return data.ext;
+        }
+      }
+    },
+    'sovrn': {
+      source: 'liveintent.sovrn.com',
       atype: 3,
       getValue: function(data) {
         return data.id;

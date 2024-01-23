@@ -42,7 +42,7 @@ describe('adnuntiusBidAdapter', function() {
   const ENDPOINT_URL_VIDEO = `${ENDPOINT_URL_BASE}&userId=${usi}&tt=vast4`;
   const ENDPOINT_URL_NOCOOKIE = `${ENDPOINT_URL_BASE}&userId=${usi}&noCookies=true`;
   const ENDPOINT_URL_SEGMENTS = `${ENDPOINT_URL_BASE}&segments=segment1,segment2,segment3&userId=${usi}`;
-  const ENDPOINT_URL_CONSENT = `${EURO_URL}${tzo}&format=json&consentString=consentString&userId=${usi}`;
+  const ENDPOINT_URL_CONSENT = `${EURO_URL}${tzo}&format=json&consentString=consentString&gdpr=1&userId=${usi}`;
   const adapter = newBidder(spec);
 
   const bidderRequests = [
@@ -909,6 +909,7 @@ describe('adnuntiusBidAdapter', function() {
         ]
       };
       serverResponse.body.adUnits[0].deals = [];
+      delete serverResponse.body.metaData.voidAuIds; // test response with no voidAuIds
 
       const interpretedResponse = spec.interpretResponse(serverResponse, altBidder);
       expect(interpretedResponse).to.have.lengthOf(0);
