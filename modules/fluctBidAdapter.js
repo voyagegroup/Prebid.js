@@ -18,7 +18,7 @@ const DEFAULT_CURRENCY = 'JPY';
 /**
  * Get bid floor price from the bid request
  * @param {BidRequest} bid
- * @returns {number|null} floor price
+ * @returns {{floor: number, currency: string}|null} floor price data
  */
 function getBidFloor(bid) {
   if (!isFn(bid.getFloor)) {
@@ -27,7 +27,10 @@ function getBidFloor(bid) {
       if (bid.params.currency && bid.params.currency !== DEFAULT_CURRENCY) {
         return null;
       }
-      return parseFloat(bid.params.bidfloor);
+      return {
+        floor: parseFloat(bid.params.bidfloor),
+        currency: DEFAULT_CURRENCY
+      };
     }
     return null;
   }
@@ -39,7 +42,10 @@ function getBidFloor(bid) {
   });
 
   if (isPlainObject(floor) && !isNaN(floor.floor) && floor.currency === DEFAULT_CURRENCY) {
-    return floor.floor;
+    return {
+      floor: floor.floor,
+      currency: floor.currency
+    };
   }
 
   return null;
@@ -131,10 +137,10 @@ export const spec = {
 
       data.instl = deepAccess(request, 'ortb2Imp.instl') === 1 || request.params.instl === 1 ? 1 : 0;
 
-      const bidFloor = getBidFloor(request);
-      if (bidFloor) {
-        data.bidfloor = bidFloor;
-        data.bidfloorcur = DEFAULT_CURRENCY;
+      const floorData = getBidFloor(request);
+      if (floorData) {
+        data.bidfloor = floorData.floor;
+        data.bidfloorcur = floorData.currency;
       }
 
       const searchParams = new URLSearchParams({
