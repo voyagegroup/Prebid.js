@@ -7,7 +7,7 @@ import {getDomComplexity, getPageDescription, getPageTitle} from "../libraries/f
 import * as converter from '../libraries/ortbConverter/converter.js';
 
 const PREBID_VERSION = '$prebid.version$';
-const ADAPTER_VERSION = '1.0';
+const ADAPTER_VERSION = '1.0.1';
 const ORTB = converter.ortbConverter({
   context: { ttl: 300 }
 });
@@ -24,6 +24,24 @@ const detectAdType = (bid) =>
 const getReferrerInfo = (bidderRequest) => {
   return bidderRequest?.refererInfo?.page ?? '';
 }
+
+const normalizeKeywords = (input) => {
+  if (!input) return [];
+
+  if (Array.isArray(input)) {
+    return input.map(k => k.trim()).filter(Boolean);
+  }
+
+  if (typeof input === 'string') {
+    return input
+      .split(',')
+      .map(k => k.trim())
+      .filter(Boolean);
+  }
+
+  // Any other type → ignore
+  return [];
+};
 
 const parseNativeAd = function (bid) {
   try {
@@ -131,6 +149,11 @@ export const spec = {
 
   buildRequests: function (bidRequests, bidderRequest) {
     const userSyncEnabled = config.getConfig("userSync.syncEnabled");
+    const currencyConfig = config.getConfig('currency');
+    const currency =
+      currencyConfig?.adServerCurrency ||
+      currencyConfig?.defaultCurrency ||
+      null;
     // (!) that avoids top-level side effects (the thing that can stop registerBidder from running)
     const computeTTFB = (w = (typeof window !== 'undefined' ? window : undefined)) => {
       try {
@@ -212,6 +235,7 @@ export const spec = {
           source: eid.source,
           id: eid.uids?.[0]?.id
         })).filter(eid => eid.source && eid.id),
+        ...(currency ? { currency } : {}),
         ads: [
           {
             sizes: formattedSizes,
@@ -221,7 +245,12 @@ export const spec = {
             ...(isNative && { nativeRequest: { ver: "1.2", assets: processedAssets || {}} })
           },
         ],
-        keywords: { tokens: ortbRequest?.site?.keywords || bidRequest.params?.keywords || [] },
+        keywords: {
+          tokens: normalizeKeywords(
+            ortbRequest?.site?.keywords ||
+            bidRequest.params?.keywords
+          )
+        },
         privacy: {
           gpp: gpp?.consentString || "",
           tcfeu: gdpr?.consentString || "",
@@ -233,8 +262,13 @@ export const spec = {
         userSyncOption: userSyncEnabled === false ? "OFF" : "BIDDERS",
         referer: getReferrerInfo(bidderRequest),
         pageReferer: document.referrer,
-        pageTitle: getPageTitle().slice(0, 300),
-        pageDescription: getPageDescription().slice(0, 300),
+        context: [{
+          source: "title",
+          text: getPageTitle().slice(0, 300)
+        }, {
+          source: "meta:description",
+          text: getPageDescription().slice(0, 300)
+        }],
         domComplexity: getDomComplexity(document),
         device: bidderRequest?.ortb2?.device || {},
         deviceWidth: screen.width,
